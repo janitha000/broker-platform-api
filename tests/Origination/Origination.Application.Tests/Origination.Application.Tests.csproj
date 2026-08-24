@@ -22,6 +22,7 @@
     </PackageReference>
   </ItemGroup>
 <ItemGroup>
-  <ProjectReference Include="..\Origination.Application\Origination.Application.csproj" /></ItemGroup>
-  <ProjectReference Include="..\Origination.Domain\Origination.Domain.csproj" /></ItemGroup>
+  <ProjectReference Include="..\..\..\src\Origination\Origination.Application\Origination.Application.csproj" />
+  <ProjectReference Include="..\..\..\src\Origination\Origination.Domain\Origination.Domain.csproj" />
+</ItemGroup>
 </Project>
