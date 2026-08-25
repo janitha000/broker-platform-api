@@ -1,19 +1,21 @@
 using Origination.Domain.Cases;
-
+using Origination.Application.Abstractions;
 namespace Origination.Application.Cases.GetCase;
 
 public sealed class GetCaseHandler
 {
     private readonly ICaseRepository _caseRepository;
+    private readonly ICurrentBroker _currentBroker;
 
-    public GetCaseHandler(ICaseRepository caseRepository)
+    public GetCaseHandler(ICaseRepository caseRepository, ICurrentBroker currentBroker)
     {
         _caseRepository = caseRepository;
+        _currentBroker = currentBroker;
     }
 
     public async Task<GetCaseResult?> Handle(GetCaseQuery query, CancellationToken cancellationToken = default)
     {
-        var @case = await _caseRepository.GetById(query.CaseId, cancellationToken);
+        var @case = await _caseRepository.GetById(query.CaseId, _currentBroker.TenantId, cancellationToken);
         if (@case is null) 
             return null;
 

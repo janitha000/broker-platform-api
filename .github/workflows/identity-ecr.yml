@@ -1,0 +1,77 @@
+name: Identity ECR
+
+on:
+    push:
+        branches: [release]
+        paths:
+            - "src/Identity/**"
+            - "tests/Identity/**"
+            - ".github/workflows/identity-ecr.yml"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    id-token: write
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "8.0.x"
+
+            - name: Test
+              run: dotnet test tests/Identity/Identity.Application.Tests/Identity.Application.Tests.csproj --configuration Release
+
+    build:
+        needs: test
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v5
+              with:
+                  role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+                  aws-region: ${{ vars.AWS_REGION }}
+                  audience: sts.amazonaws.com
+
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            - name: Build and push
+              env:
+                  REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                  REPOSITORY: identity-api
+                  IMAGE_TAG: ${{ github.sha }}
+              run: |
+                  docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG -t $REGISTRY/$REPOSITORY:latest src/Identity
+                  docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+                  docker push $REGISTRY/$REPOSITORY:latest
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: aws-actions/configure-aws-credentials@v5
+              with:
+                  role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+                  aws-region: ${{ vars.AWS_REGION }}
+                  audience: sts.amazonaws.com
+
+            - name: Force new ECS deployment
+              run: |
+                  aws ecs update-service \
+                      --cluster origination-dev \
+                      --service identity-api \
+                      --force-new-deployment

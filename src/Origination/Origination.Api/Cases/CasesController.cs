@@ -1,10 +1,12 @@
 using Origination.Application.Cases.CreateCase;
 using Origination.Application.Cases.GetCase;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Origination.Application.Cases.CompleteFactFind;
 
 namespace Origination.Api.Cases;
 
+[Authorize]
 [ApiController]
 [Route("cases")]
 public sealed class CasesController : ControllerBase

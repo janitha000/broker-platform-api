@@ -1,0 +1,25 @@
+@Identity.Api_HostAddress = http://localhost:5250
+
+GET {{Identity.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+POST {{Identity.Api_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Example Brokerage",
+  "email": "broker@example.com",
+  "password": "ChangeMe1!"
+}
+
+###
+
+POST {{Identity.Api_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "broker@example.com",
+  "password": "ChangeMe1!"
+}

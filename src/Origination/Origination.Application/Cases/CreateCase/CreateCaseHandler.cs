@@ -20,6 +20,7 @@ public sealed class CreateCaseHandler
         {
             Id = Guid.NewGuid(),
             BrokerId = _currentBroker.BrokerId,
+            TenantId = _currentBroker.TenantId,
             InquiryNotes = command.InquiryNotes ?? string.Empty,
             Status = CaseStatus.Inquiry,
             CreatedAt = DateTime.UtcNow,

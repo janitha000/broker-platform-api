@@ -33,3 +33,11 @@ output "private_subnet_ids" {
 output "ecs_security_group_id" {
   value = aws_security_group.ecs.id
 }
+
+output "identity_ecr_repository_url" {
+  value = aws_ecr_repository.identity.repository_url
+}
+
+output "identity_sql_secret_arn" {
+  value = aws_secretsmanager_secret.identity_sql.arn
+}

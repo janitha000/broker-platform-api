@@ -1,21 +1,23 @@
 using Origination.Domain.Cases;
-
+using Origination.Application.Abstractions;
 namespace Origination.Application.Cases.CompleteFactFind;
 
 public sealed class CompleteFactFindHandler
 {
     private readonly ICaseRepository _caseRepository;
+    private readonly ICurrentBroker _currentBroker;
 
-    public CompleteFactFindHandler(ICaseRepository caseRepository)
+    public CompleteFactFindHandler(ICaseRepository caseRepository, ICurrentBroker currentBroker)
     {
         _caseRepository = caseRepository;
+        _currentBroker = currentBroker;
     }
 
     public async Task<CompleteFactFindResult?> Handle(
         CompleteFactFindCommand command,
         CancellationToken cancellationToken = default)    
     {
-        var @case = await _caseRepository.GetById(command.CaseId, cancellationToken);
+        var @case = await _caseRepository.GetById(command.CaseId, _currentBroker.TenantId, cancellationToken);
         if (@case is null)
             return null;
 

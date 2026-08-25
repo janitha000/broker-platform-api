@@ -25,14 +25,30 @@ resource "aws_ecs_task_definition" "api" {
       containerPort = 8080
       protocol      = "tcp"
     }]
-    environment = [{
-      name  = "ASPNETCORE_ENVIRONMENT"
-      value = "Production"
-    }]
-    secrets = [{
-      name      = "ConnectionStrings__Origination"
-      valueFrom = aws_secretsmanager_secret.sql.arn
-    }]
+    environment = [
+      {
+        name  = "ASPNETCORE_ENVIRONMENT"
+        value = "Production"
+      },
+      {
+        name  = "Jwt__Issuer"
+        value = "identity"
+      },
+      {
+        name  = "Jwt__Audience"
+        value = "broker-platform"
+      }
+    ]
+    secrets = [
+      {
+        name      = "ConnectionStrings__Origination"
+        valueFrom = aws_secretsmanager_secret.sql.arn
+      },
+      {
+        name      = "Jwt__Key"
+        valueFrom = aws_secretsmanager_secret.jwt.arn
+      }
+    ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {
