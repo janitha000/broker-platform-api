@@ -11,7 +11,7 @@ public sealed class GetCaseHandler
         _caseRepository = caseRepository;
     }
 
-    public async Task<GetCaseResult> Handle(GetCaseQuery query, CancellationToken cancellationToken = default)
+    public async Task<GetCaseResult?> Handle(GetCaseQuery query, CancellationToken cancellationToken = default)
     {
         var @case = await _caseRepository.GetById(query.CaseId, cancellationToken);
         if (@case is null) 
