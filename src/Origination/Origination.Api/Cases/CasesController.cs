@@ -2,6 +2,8 @@ using Origination.Application.Cases.CreateCase;
 using Origination.Application.Cases.GetCase;
 using Microsoft.AspNetCore.Mvc;
 
+namespace Origination.Api.Cases;
+
 [ApiController]
 [Route("cases")]
 public sealed class CasesController : ControllerBase

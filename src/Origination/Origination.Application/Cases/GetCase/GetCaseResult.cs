@@ -1,6 +1,5 @@
-namespace Origination.Application.Cases.GetCase;
-
 using Origination.Domain.Cases;
 
+namespace Origination.Application.Cases.GetCase;
 
-public sealed record GetCaseResult(Guid caseId, CaseStatus Status);
+public sealed record GetCaseResult(Guid CaseId, CaseStatus Status);

@@ -1,6 +1,6 @@
-namespace Origination.Application.Cases.GetCase;
-
 using Origination.Domain.Cases;
+
+namespace Origination.Application.Cases.GetCase;
 
 public sealed class GetCaseHandler
 {
