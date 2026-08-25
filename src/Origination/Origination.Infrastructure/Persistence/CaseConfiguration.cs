@@ -15,6 +15,9 @@ public sealed class CaseConfiguration : IEntityTypeConfiguration<Case>
         builder.Property(c => c.BrokerId)
             .IsRequired();
 
+        builder.Property(c => c.TenantId)
+            .IsRequired();
+
         builder.Property(c => c.InquiryNotes)
             .HasMaxLength(4000)
             .IsRequired();

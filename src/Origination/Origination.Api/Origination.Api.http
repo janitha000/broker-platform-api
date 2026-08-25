@@ -1,6 +1,15 @@
 @Origination.Api_HostAddress = http://localhost:5135
+@token = 
 
-GET {{Origination.Api_HostAddress}}/weatherforecast/
+GET {{Origination.Api_HostAddress}}/health
 Accept: application/json
 
 ###
+
+POST {{Origination.Api_HostAddress}}/cases
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "inquiryNotes": "First home inquiry"
+}

@@ -38,7 +38,7 @@ infra/origination/             # Terraform for origination-dev
 
 Rules: Domain has no Infrastructure references. Api wires Application + Infrastructure. Connection string name is **`Origination`**.
 
-Auth is a stub broker id `11111111-1111-1111-1111-111111111111` (`StubCurrentBroker`). JSON uses string enums.
+Auth: Identity issues a JWT (`POST /auth/register` or `/auth/login`). Origination `/cases` requires `Authorization: Bearer`. `/health` is anonymous. Same `Jwt` Key/Issuer/Audience in both APIs. JSON uses string enums.
 
 ## API
 

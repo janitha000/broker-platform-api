@@ -12,11 +12,11 @@ public sealed class CaseRepository : ICaseRepository
         _context = context;
     }
 
-    public async Task<Case?> GetById(Guid caseId, CancellationToken cancellationToken = default)
+    public async Task<Case?> GetById(Guid caseId, Guid tenantId, CancellationToken cancellationToken = default)
     {
          return await _context.Cases
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == caseId, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == caseId && c.TenantId == tenantId, cancellationToken);
     }
 
     public async Task Add(Case @case, CancellationToken cancellationToken = default)
