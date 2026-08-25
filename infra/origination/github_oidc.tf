@@ -13,6 +13,18 @@ variable "github_branch" {
   default = "master"
 }
 
+# GitHub embeds immutable numeric ids in the OIDC sub claim:
+# repo:<org>@<owner_id>/<repo>@<repo_id>:ref:refs/heads/<branch>
+variable "github_owner_id" {
+  type    = string
+  default = "5737103"
+}
+
+variable "github_repo_id" {
+  type    = string
+  default = "1344936057"
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
@@ -37,9 +49,12 @@ data "aws_iam_policy_document" "github_assume" {
       values   = ["sts.amazonaws.com"]
     }
     condition {
-        test     = "StringLike"
-        variable = "token.actions.githubusercontent.com:sub"
-        values   = ["repo:${var.github_org}/${var.github_repo}:*"]
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values = [
+        "repo:${var.github_org}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}:*",
+        "repo:${var.github_org}/${var.github_repo}:*",
+      ]
     }
   }
 }
