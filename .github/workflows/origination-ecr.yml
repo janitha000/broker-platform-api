@@ -2,7 +2,7 @@ name: Origination ECR
 
 on:
     push:
-        branches: [master]
+        branches: [release]
         paths:
             - "src/Origination/**"
             - "tests/Origination/**"
