@@ -32,6 +32,12 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
+            - name: Debug OIDC subject
+              run: |
+                  echo "repository: ${{ github.repository }}"
+                  echo "ref:        ${{ github.ref }}"
+                  echo "expected sub: repo:${{ github.repository }}:*"
+
             - name: Configure AWS credentials
               uses: aws-actions/configure-aws-credentials@v4
               with:
