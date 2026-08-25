@@ -386,3 +386,4 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+src/Origination/Origination.Api/appsettings.Development.json
