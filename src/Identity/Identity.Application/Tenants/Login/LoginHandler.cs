@@ -21,7 +21,7 @@ public sealed class LoginHandler
 
     public async Task<LoginResult?> Handle(LoginCommand command, CancellationToken cancellationToken = default)
     {
-        var email = command.Email.Trim();
+        var email = command.Email.Trim().ToLowerInvariant();
         var brokerUser = await _brokerUserRepository.GetByEmail(email, cancellationToken);
         if (brokerUser is null)
             return null;

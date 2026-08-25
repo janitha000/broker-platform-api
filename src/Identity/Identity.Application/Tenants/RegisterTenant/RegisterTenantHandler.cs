@@ -26,7 +26,7 @@ public sealed class RegisterTenantHandler
         RegisterTenantCommand command,
         CancellationToken cancellationToken = default)
     {
-        var email = command.Email.Trim();
+        var email = command.Email.Trim().ToLowerInvariant();
         var existing = await _brokerUserRepository.GetByEmail(email, cancellationToken);
         if (existing is not null)
             return null;
