@@ -89,11 +89,16 @@ Region **`ap-southeast-2`**. Terraform lives in [`infra/origination`](infra/orig
 
 ```
 Laptop / GitHub
-    → ECR (origination-api)
-    → ECS Fargate (private subnets, NAT for image pull)
-    → ALB :80 → target group :8080 /health
-    → RDS SQL Server (connection string in Secrets Manager)
+    → ECR (origination-api, identity-api)
+    → ECS Fargate (private subnets)
+    → ALB :80
+         /auth*     → identity-api  (register / login)
+         everything else → origination-api  (/health, /cases)
+    → RDS SQL Server: databases Origination and Identity
+    → Jwt__Key from Secrets Manager origination/dev/jwt (same for both tasks)
 ```
+
+Public Identity URLs use the **same ALB host**: `http://<alb>/auth/register`, `http://<alb>/auth/login`. Origination `POST /cases` still needs `Authorization: Bearer`.
 
 Apply from a machine with AWS credentials:
 
@@ -102,8 +107,14 @@ cd infra\origination
 terraform init
 terraform apply
 terraform output alb_dns_name
-terraform output rds_endpoint
-terraform output github_actions_role_arn
+terraform output identity_ecr_repository_url
+```
+
+Push an `identity-api:latest` image (Actions or local `docker push`) **before** the Identity service will go healthy. Then migrate Identity on RDS (create database `Identity` if needed):
+
+```powershell
+# ConnectionStrings__Identity = same host as Origination, Database=Identity
+dotnet ef database update --project src\Identity\Identity.Infrastructure --startup-project src\Identity\Identity.Api
 ```
 
 `terraform.tfvars` (not committed) needs `db_password` and optionally `my_ip` as `x.x.x.x/32` for laptop EF against RDS.
@@ -116,12 +127,12 @@ NAT + RDS **bill until `terraform destroy`**.
 
 ## GitHub Actions
 
-Workflow: [`.github/workflows/origination-ecr.yml`](.github/workflows/origination-ecr.yml)
+Workflows:
 
-- Trigger: push to **`master`** (paths under Origination) or `workflow_dispatch`
-- **test** — `dotnet test` on Origination.Application.Tests (.NET 8)
-- **build** — Docker context `src/Origination`, push SHA + `latest` to ECR
-- **deploy** — `ecs update-service --force-new-deployment` (Terraform owns the task definition; Actions does not register a new one)
+- [`.github/workflows/origination-ecr.yml`](.github/workflows/origination-ecr.yml) — Origination test / ECR / ECS `origination-api`
+- [`.github/workflows/identity-ecr.yml`](.github/workflows/identity-ecr.yml) — Identity test / ECR `identity-api` / ECS `identity-api`
+
+Trigger: push to **`release`** (path filters) or `workflow_dispatch`.
 
 OIDC (no long-lived AWS keys). Repository **variables** (not GitHub Environments, not access-key secrets):
 
@@ -144,9 +155,9 @@ Classic `repo:janitha000/broker-platform-api:*` alone is not enough. See [`infra
 aws ecs update-service --cluster origination-dev --service origination-api --force-new-deployment --region ap-southeast-2
 
 # Task logs
-# CloudWatch group: /ecs/origination-api
+# CloudWatch groups: /ecs/origination-api  /ecs/identity-api
 ```
 
 ## Not done yet
 
-Identity / real broker auth, other microservices, ALB HTTPS, private RDS lock-down without data loss, S3 Terraform state, auto-migrate from Actions, production IAM tightening.
+CORS for a browser UI, ALB HTTPS, private RDS lock-down without data loss, S3 Terraform state, auto-migrate from Actions, production IAM tightening. Do not use the default Jwt key outside this spike.
