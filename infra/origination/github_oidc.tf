@@ -95,3 +95,24 @@ resource "aws_iam_role_policy" "github_ecr" {
 output "github_actions_role_arn" {
   value = aws_iam_role.github_actions.arn
 }
+
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "github_ecs" {
+  statement {
+    sid = "EcsRoll"
+    actions = [
+      "ecs:UpdateService",
+      "ecs:DescribeServices",
+    ]
+    resources = [
+      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/origination-dev/origination-api",
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "github_ecs" {
+  name   = "origination-dev-github-ecs"
+  role   = aws_iam_role.github_actions.id
+  policy = data.aws_iam_policy_document.github_ecs.json
+}

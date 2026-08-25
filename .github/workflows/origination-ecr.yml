@@ -55,3 +55,23 @@ jobs:
                   docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG -t $REGISTRY/$REPOSITORY:latest src/Origination
                   docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
                   docker push $REGISTRY/$REPOSITORY:latest
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: aws-actions/configure-aws-credentials@v5
+              with:
+                  role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+                  aws-region: ${{ vars.AWS_REGION }}
+                  audience: sts.amazonaws.com
+
+            - name: Force new ECS deployment
+              run: |
+                  aws ecs update-service \
+                      --cluster origination-dev \
+                      --service origination-api \
+                      --force-new-deployment
