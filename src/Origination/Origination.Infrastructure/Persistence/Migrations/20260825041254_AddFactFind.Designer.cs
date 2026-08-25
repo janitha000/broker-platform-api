@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Origination.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using Origination.Infrastructure.Persistence;
 namespace Origination.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(OriginationDbContext))]
-    partial class OriginationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260825041254_AddFactFind")]
+    partial class AddFactFind
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -24,4 +24,10 @@ public sealed class CaseRepository : ICaseRepository
         _context.Cases.Add(@case);
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task Update(Case @case, CancellationToken cancellationToken = default)
+    {
+        _context.Cases.Update(@case);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

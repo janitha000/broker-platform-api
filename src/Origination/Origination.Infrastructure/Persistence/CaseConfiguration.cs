@@ -24,6 +24,16 @@ public sealed class CaseConfiguration : IEntityTypeConfiguration<Case>
             .HasMaxLength(32)
             .IsRequired();
 
+        builder.OwnsOne(c => c.FactFind, ff =>
+        {
+            ff.Property(x => x.Objectives).HasMaxLength(4000);
+            ff.Property(x => x.Income).HasPrecision(18, 2);
+            ff.Property(x => x.Expenses).HasPrecision(18, 2);
+            ff.Property(x => x.Assets).HasPrecision(18, 2);
+            ff.Property(x => x.Debts).HasPrecision(18, 2);
+            ff.Property(x => x.CompletedAt);
+        });
+
         builder.Property(c => c.CreatedAt)
             .IsRequired();
     }

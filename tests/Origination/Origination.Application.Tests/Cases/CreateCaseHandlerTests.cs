@@ -45,4 +45,10 @@ file sealed class InMemoryCaseRepository : ICaseRepository
         _cases.TryGetValue(caseId, out var @case);
         return Task.FromResult(@case);
     }
+
+    public Task Update(Case @case, CancellationToken cancellationToken = default)
+    {
+        _cases[@case.Id] = @case;
+        return Task.CompletedTask;
+    }
 }

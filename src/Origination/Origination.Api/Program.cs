@@ -5,6 +5,7 @@ using Origination.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Origination.Application.Cases.CreateCase;
 using Origination.Application.Cases.GetCase;
+using Origination.Application.Cases.CompleteFactFind;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder.Services.AddScoped<ICurrentBroker, StubCurrentBroker>();
 builder.Services.AddScoped<ICaseRepository, CaseRepository>();
 builder.Services.AddScoped<CreateCaseHandler>();
 builder.Services.AddScoped<GetCaseHandler>();
+builder.Services.AddScoped<CompleteFactFindHandler>();
 
 
 builder.Services.AddDbContext<OriginationDbContext>(options =>

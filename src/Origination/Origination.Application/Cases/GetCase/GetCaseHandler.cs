@@ -16,6 +16,17 @@ public sealed class GetCaseHandler
         var @case = await _caseRepository.GetById(query.CaseId, cancellationToken);
         if (@case is null) 
             return null;
-        return new GetCaseResult(@case.Id, @case.Status);
+
+        FactFindDto? factFind = @case.FactFind is null
+            ? null
+            : new FactFindDto(
+                @case.FactFind.Objectives,
+                @case.FactFind.Income,
+                @case.FactFind.Expenses,
+                @case.FactFind.Assets,
+                @case.FactFind.Debts,
+                @case.FactFind.CompletedAt);
+        
+        return new GetCaseResult(@case.Id, @case.Status, @case.InquiryNotes, factFind);
     }
 }
