@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Origination.Application.Cases.CreateCase;
 using Origination.Application.Cases.GetCase;
+using Origination.Application.Cases.GetCases;
 using Origination.Application.Cases.CompleteFactFind;
 
 var builder = WebApplication.CreateBuilder(args);

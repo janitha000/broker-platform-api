@@ -19,6 +19,15 @@ public sealed class CaseRepository : ICaseRepository
             .FirstOrDefaultAsync(c => c.Id == caseId && c.TenantId == tenantId, cancellationToken);
     }
 
+    public async Task<IEnumerable<Case>> GetCasesByTenantId(Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Cases
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task Add(Case @case, CancellationToken cancellationToken = default)
     {
         _context.Cases.Add(@case);

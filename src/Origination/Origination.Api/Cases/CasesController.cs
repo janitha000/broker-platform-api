@@ -17,12 +17,16 @@ public sealed class CasesController : ControllerBase
     private readonly GetCasesHandler _getCasesHandler;
     private readonly CompleteFactFindHandler _completeFactFindHandler;
 
-    public CasesController(CreateCaseHandler createCaseHandler, GetCaseHandler getCaseHandler, CompleteFactFindHandler completeFactFindHandler)
+    public CasesController(
+        CreateCaseHandler createCaseHandler,
+        GetCaseHandler getCaseHandler,
+        GetCasesHandler getCasesHandler,
+        CompleteFactFindHandler completeFactFindHandler)
     {
         _createCaseHandler = createCaseHandler;
         _getCaseHandler = getCaseHandler;
-        _completeFactFindHandler = completeFactFindHandler;
         _getCasesHandler = getCasesHandler;
+        _completeFactFindHandler = completeFactFindHandler;
     }
 
     [HttpPost]

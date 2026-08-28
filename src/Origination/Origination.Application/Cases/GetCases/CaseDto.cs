@@ -1,3 +1,4 @@
+using Origination.Domain.Cases;
 
 namespace Origination.Application.Cases.GetCases;
 
