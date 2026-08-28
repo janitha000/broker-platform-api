@@ -85,12 +85,12 @@ SQL Server SA password in compose is for **dev only**. API is on port **8080**.
 
 ## AWS (origination-dev)
 
-Region **`ap-southeast-2`**. Terraform lives in [`infra/origination`](infra/origination). State and `terraform.tfvars` are gitignored (password + `my_ip`).
+Region **`ap-southeast-2`**. Terraform lives in [`infra`](infra). State and `terraform.tfvars` are gitignored (password + `my_ip`).
 
 ```
 Laptop / GitHub
     → ECR (origination-api, identity-api)
-    → ECS Fargate (private subnets)
+    → ECS Fargate (public subnets + public IP; no NAT)
     → ALB :80
          /auth*     → identity-api  (register / login)
          everything else → origination-api  (/health, /cases)
@@ -103,7 +103,7 @@ Public Identity URLs use the **same ALB host**: `http://<alb>/auth/register`, `h
 Apply from a machine with AWS credentials:
 
 ```powershell
-cd infra\origination
+cd infra
 terraform init
 terraform apply
 terraform output alb_dns_name
@@ -123,7 +123,7 @@ dotnet ef database update --project src\Identity\Identity.Infrastructure --start
 
 EF from GitHub cannot reach RDS. Migrate from a host allowed on the RDS security group.
 
-NAT + RDS **bill until `terraform destroy`**.
+RDS **bills until `terraform destroy`**. There is no NAT gateway (Fargate uses public subnets).
 
 ## GitHub Actions
 
