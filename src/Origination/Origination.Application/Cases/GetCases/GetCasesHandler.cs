@@ -1,3 +1,6 @@
+using Origination.Application.Abstractions;
+using Origination.Domain.Cases;
+
 namespace Origination.Application.Cases.GetCases;
 
 public sealed class GetCasesHandler
