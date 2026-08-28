@@ -34,6 +34,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.MapInboundClaims = false;
+        AuthCookie.ReadJwtFromCookie(options);
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
