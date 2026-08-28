@@ -20,6 +20,7 @@ builder.Services.AddScoped<ICurrentBroker, JwtCurrentBroker>();
 builder.Services.AddScoped<ICaseRepository, CaseRepository>();
 builder.Services.AddScoped<CreateCaseHandler>();
 builder.Services.AddScoped<GetCaseHandler>();
+builder.Services.AddScoped<GetCasesHandler>();
 builder.Services.AddScoped<CompleteFactFindHandler>();
 
 builder.Services.AddDbContext<OriginationDbContext>(options =>

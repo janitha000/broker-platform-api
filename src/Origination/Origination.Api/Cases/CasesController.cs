@@ -1,5 +1,6 @@
 using Origination.Application.Cases.CreateCase;
 using Origination.Application.Cases.GetCase;
+using Origination.Application.Cases.GetCases;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Origination.Application.Cases.CompleteFactFind;
@@ -13,6 +14,7 @@ public sealed class CasesController : ControllerBase
 {
     private readonly CreateCaseHandler _createCaseHandler;
     private readonly GetCaseHandler _getCaseHandler;
+    private readonly GetCasesHandler _getCasesHandler;
     private readonly CompleteFactFindHandler _completeFactFindHandler;
 
     public CasesController(CreateCaseHandler createCaseHandler, GetCaseHandler getCaseHandler, CompleteFactFindHandler completeFactFindHandler)
@@ -20,6 +22,7 @@ public sealed class CasesController : ControllerBase
         _createCaseHandler = createCaseHandler;
         _getCaseHandler = getCaseHandler;
         _completeFactFindHandler = completeFactFindHandler;
+        _getCasesHandler = getCasesHandler;
     }
 
     [HttpPost]
@@ -45,6 +48,13 @@ public sealed class CasesController : ControllerBase
         var result = await _completeFactFindHandler.Handle(command with { CaseId = caseId }, cancellationToken);
         if (result is null)
             return NotFound();
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetCases(CancellationToken cancellationToken = default)
+    {
+        var result = await _getCasesHandler.Handle(new GetCasesQuery(), cancellationToken);
         return Ok(result);
     }
 }
