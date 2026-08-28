@@ -95,6 +95,77 @@ resource "aws_iam_role_policy" "github_ecr" {
   policy = data.aws_iam_policy_document.github_ecr.json
 }
 
+variable "github_client_repo" {
+  type    = string
+  default = "broker-platform-client"
+}
+
+variable "github_client_repo_id" {
+  type        = string
+  default     = "1349209006"
+  description = "Numeric GitHub repo id for OIDC sub (broker-platform-client)."
+}
+
+data "aws_iam_policy_document" "github_client_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values = [
+        "repo:${var.github_org}@${var.github_owner_id}/${var.github_client_repo}@${var.github_client_repo_id}:*",
+        "repo:${var.github_org}/${var.github_client_repo}:*",
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "github_actions_client" {
+  name               = "origination-dev-github-client"
+  assume_role_policy = data.aws_iam_policy_document.github_client_assume.json
+}
+
+data "aws_iam_policy_document" "github_client_deploy" {
+  statement {
+    sid = "S3Sync"
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:DeleteObject",
+      "s3:ListBucket",
+    ]
+    resources = [
+      aws_s3_bucket.ui.arn,
+      "${aws_s3_bucket.ui.arn}/*",
+    ]
+  }
+
+  statement {
+    sid       = "CloudFrontInvalidate"
+    actions   = ["cloudfront:CreateInvalidation"]
+    resources = [aws_cloudfront_distribution.ui.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "github_client_deploy" {
+  name   = "origination-dev-github-client-deploy"
+  role   = aws_iam_role.github_actions_client.id
+  policy = data.aws_iam_policy_document.github_client_deploy.json
+}
+
+output "github_client_actions_role_arn" {
+  value = aws_iam_role.github_actions_client.arn
+}
+
 output "github_actions_role_arn" {
   value = aws_iam_role.github_actions.arn
 }

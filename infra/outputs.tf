@@ -41,3 +41,19 @@ output "identity_ecr_repository_url" {
 output "identity_sql_secret_arn" {
   value = aws_secretsmanager_secret.identity_sql.arn
 }
+
+output "ui_bucket_name" {
+  value = aws_s3_bucket.ui.id
+}
+
+output "ui_cloudfront_domain" {
+  value = aws_cloudfront_distribution.ui.domain_name
+}
+
+output "ui_cloudfront_distribution_id" {
+  value = aws_cloudfront_distribution.ui.id
+}
+
+output "ui_url" {
+  value = "https://${aws_cloudfront_distribution.ui.domain_name}"
+}

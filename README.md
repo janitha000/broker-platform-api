@@ -89,6 +89,9 @@ Region **`ap-southeast-2`**. Terraform lives in [`infra`](infra). State and `ter
 
 ```
 Laptop / GitHub
+    → CloudFront (HTTPS)
+         /auth*  /cases* → ALB :80 → identity-api / origination-api
+         default          → S3 (Vite SPA)
     → ECR (origination-api, identity-api)
     → ECS Fargate (public subnets + public IP; no NAT)
     → ALB :80
@@ -97,6 +100,8 @@ Laptop / GitHub
     → RDS SQL Server: databases Origination and Identity
     → Jwt__Key from Secrets Manager origination/dev/jwt (same for both tasks)
 ```
+
+The browser UI is `https://<cloudfront>` (`terraform output ui_url`). API calls are same-origin (`/auth`, `/cases`). Client GitHub Actions syncs S3; see the client repo README.
 
 Public Identity URLs use the **same ALB host**: `http://<alb>/auth/register`, `http://<alb>/auth/login`. Origination `POST /cases` still needs `Authorization: Bearer`.
 
@@ -131,6 +136,8 @@ Workflows:
 
 - [`.github/workflows/origination-ecr.yml`](.github/workflows/origination-ecr.yml) — Origination test / ECR / ECS `origination-api`
 - [`.github/workflows/identity-ecr.yml`](.github/workflows/identity-ecr.yml) — Identity test / ECR `identity-api` / ECS `identity-api`
+
+The SPA is deployed from **broker-platform-client** (OIDC role `origination-dev-github-client`). Terraform outputs: `github_client_actions_role_arn`, `ui_bucket_name`, `ui_cloudfront_distribution_id`.
 
 Trigger: push to **`release`** (path filters) or `workflow_dispatch`.
 

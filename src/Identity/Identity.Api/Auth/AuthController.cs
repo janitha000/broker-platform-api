@@ -1,5 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Identity.Application.Tenants.Login;
 using Identity.Application.Tenants.RegisterTenant;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Identity.Api.Auth;
@@ -28,7 +31,8 @@ public sealed class AuthController : ControllerBase
         if (result is null)
             return Conflict();
 
-        return Created(string.Empty, result);
+        AppendAccessCookie(result.AccessToken);
+        return Created(string.Empty, ToUser(result.TenantId, result.BrokerId, result.Email));
     }
 
     [HttpPost("login")]
@@ -40,6 +44,41 @@ public sealed class AuthController : ControllerBase
         if (result is null)
             return Unauthorized();
 
-        return Ok(result);
+        AppendAccessCookie(result.AccessToken);
+        return Ok(ToUser(result.TenantId, result.BrokerId, result.Email));
     }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete(AuthCookie.Name, AuthCookie.Delete(Request.IsHttps));
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult Me()
+    {
+        var brokerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        var tenantId = User.FindFirst("tenant_id")?.Value;
+        var email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+        if (!Guid.TryParse(brokerId, out var broker)
+            || !Guid.TryParse(tenantId, out var tenant)
+            || string.IsNullOrEmpty(email))
+            return Unauthorized();
+
+        return Ok(ToUser(tenant, broker, email));
+    }
+
+    private void AppendAccessCookie(string accessToken)
+    {
+        Response.Cookies.Append(
+            AuthCookie.Name,
+            accessToken,
+            AuthCookie.Create(Request.IsHttps));
+    }
+
+    private static AuthUserResponse ToUser(Guid tenantId, Guid brokerId, string email) =>
+        new(tenantId, brokerId, email);
 }
