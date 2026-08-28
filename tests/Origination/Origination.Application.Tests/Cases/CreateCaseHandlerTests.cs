@@ -70,6 +70,15 @@ file sealed class InMemoryCaseRepository : ICaseRepository
         return Task.FromResult<Case?>(@case);
     }
 
+    public Task<IEnumerable<Case>> GetCasesByTenantId(Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        var matches = _cases.Values
+            .Where(c => c.TenantId == tenantId)
+            .OrderByDescending(c => c.CreatedAt)
+            .AsEnumerable();
+        return Task.FromResult(matches);
+    }
+
     public Task Update(Case @case, CancellationToken cancellationToken = default)
     {
         _cases[@case.Id] = @case;

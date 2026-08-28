@@ -87,4 +87,13 @@ file sealed class InMemoryFactFindCaseRepository : ICaseRepository
             return Task.FromResult<Case?>(null);
         return Task.FromResult<Case?>(@case);
     }
+
+    public Task<IEnumerable<Case>> GetCasesByTenantId(Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        var matches = _cases.Values
+            .Where(c => c.TenantId == tenantId)
+            .OrderByDescending(c => c.CreatedAt)
+            .AsEnumerable();
+        return Task.FromResult(matches);
+    }
 }
