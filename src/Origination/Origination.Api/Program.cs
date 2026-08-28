@@ -50,6 +50,20 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+if (corsOrigins.Length > 0)
+{
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+        {
+            policy.WithOrigins(corsOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+    });
+}
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -57,6 +71,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+if (corsOrigins.Length > 0)
+    app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
