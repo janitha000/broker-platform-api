@@ -14,9 +14,9 @@ public sealed class CaseRepository : ICaseRepository
 
     public async Task<Case?> GetById(Guid caseId, Guid tenantId, CancellationToken cancellationToken = default)
     {
-         return await _context.Cases
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == caseId && c.TenantId == tenantId, cancellationToken);
+        return await _context.Cases
+           .AsNoTracking()
+           .FirstOrDefaultAsync(c => c.Id == caseId && c.TenantId == tenantId, cancellationToken);
     }
 
     public async Task<IEnumerable<Case>> GetCasesByTenantId(Guid tenantId, CancellationToken cancellationToken = default)
