@@ -1,0 +1,91 @@
+name: Payment ECR
+
+on:
+    push:
+        branches: [release]
+        paths:
+            - "src/Payment/**"
+            - "tests/Payment/**"
+            - "nuget.config"
+            - ".github/workflows/payment-ecr.yml"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    packages: read
+    id-token: write
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "8.0.x"
+                  source-url: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+              env:
+                  NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Restore
+              run: dotnet restore src/Payment/Payment.sln
+
+            - name: Build
+              run: dotnet build src/Payment/Payment.sln --configuration Release --no-restore
+
+            - name: Test
+              run: dotnet test src/Payment/Payment.sln --configuration Release --no-build --no-restore
+
+    build:
+        needs: test
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v5
+              with:
+                  role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+                  aws-region: ${{ vars.AWS_REGION }}
+                  audience: sts.amazonaws.com
+
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            - name: Build and push
+              env:
+                  REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                  REPOSITORY: payment-api
+                  IMAGE_TAG: ${{ github.sha }}
+              run: |
+                  docker build -f src/Payment/Dockerfile \
+                    -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
+                    -t $REGISTRY/$REPOSITORY:latest \
+                    .
+                  docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+                  docker push $REGISTRY/$REPOSITORY:latest
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: aws-actions/configure-aws-credentials@v5
+              with:
+                  role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+                  aws-region: ${{ vars.AWS_REGION }}
+                  audience: sts.amazonaws.com
+
+            - name: Force new ECS deployment
+              run: |
+                  aws ecs update-service \
+                      --cluster origination-dev \
+                      --service payment-api \
+                      --force-new-deployment

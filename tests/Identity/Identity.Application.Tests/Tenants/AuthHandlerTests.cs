@@ -7,23 +7,40 @@ namespace Identity.Application.Tests.Tenants;
 
 public sealed class AuthHandlerTests
 {
+    private static RegisterCardDetails ValidCard(string number = "4242424242424242") =>
+        new(number, 12, 2030, "123");
+
+    private static RegisterTenantCommand RegisterCommand(
+        string email = "a@b.com",
+        string cardNumber = "4242424242424242",
+        string key = "key-1") =>
+        new("Firm", email, "pw", ValidCard(cardNumber), key);
+
+    private static RegisterTenantHandler RegisterHandler(
+        IBrokerUserRepository? users = null,
+        IPaymentGateway? payment = null,
+        ITenantRepository? tenants = null) =>
+        new(
+            tenants ?? new InMemoryTenantRepository(),
+            users ?? new InMemoryBrokerUserRepository(),
+            new FakePasswordHasher(),
+            new FakeTokenIssuer(),
+            payment ?? new StubPaymentGateway(PaymentChargeStatus.Succeeded));
+
     [Fact]
     public async Task Register_CreatesTenantAndUser_AndReturnsToken()
     {
-        var tenants = new InMemoryTenantRepository();
         var users = new InMemoryBrokerUserRepository();
-        var hasher = new FakePasswordHasher();
-        var tokens = new FakeTokenIssuer();
-        var handler = new RegisterTenantHandler(tenants, users, hasher, tokens);
+        var outcome = await RegisterHandler(users).Handle(
+            new RegisterTenantCommand(
+                "  Example Brokers  ",
+                "  Broker@Example.COM  ",
+                "secret",
+                ValidCard(),
+                "key-1"));
 
-        var result = await handler.Handle(new RegisterTenantCommand(
-            "  Example Brokers  ",
-            "  Broker@Example.COM  ",
-            "secret"));
-
-        Assert.NotNull(result);
-        Assert.NotEqual(Guid.Empty, result!.TenantId);
-        Assert.NotEqual(Guid.Empty, result.BrokerId);
+        Assert.Equal(RegisterTenantKind.Succeeded, outcome.Kind);
+        var result = outcome.Result!;
         Assert.Equal("broker@example.com", result.Email);
         Assert.Equal($"{result.BrokerId}|{result.TenantId}|broker@example.com", result.AccessToken);
 
@@ -34,52 +51,67 @@ public sealed class AuthHandlerTests
     }
 
     [Fact]
-    public async Task Register_DuplicateEmail_ReturnsNull()
+    public async Task Register_DuplicateEmail_DoesNotCharge()
     {
-        var tenants = new InMemoryTenantRepository();
         var users = new InMemoryBrokerUserRepository();
-        var hasher = new FakePasswordHasher();
-        var tokens = new FakeTokenIssuer();
-        var handler = new RegisterTenantHandler(tenants, users, hasher, tokens);
-        var command = new RegisterTenantCommand("Firm", "a@b.com", "pw");
+        var payment = new CountingPaymentGateway(PaymentChargeStatus.Succeeded);
+        var handler = RegisterHandler(users, payment);
+        var command = RegisterCommand();
 
         await handler.Handle(command);
         var second = await handler.Handle(command);
 
-        Assert.Null(second);
+        Assert.Equal(RegisterTenantKind.DuplicateEmail, second.Kind);
+        Assert.Equal(1, payment.Calls);
+    }
+
+    [Fact]
+    public async Task Register_DeclinedCard_DoesNotCreateUser()
+    {
+        var users = new InMemoryBrokerUserRepository();
+        var outcome = await RegisterHandler(
+                users,
+                new StubPaymentGateway(PaymentChargeStatus.Declined))
+            .Handle(RegisterCommand());
+
+        Assert.Equal(RegisterTenantKind.PaymentDeclined, outcome.Kind);
+        Assert.Null(await users.GetByEmail("a@b.com"));
+    }
+
+    [Fact]
+    public async Task Register_PaymentConflict_DoesNotCreateUser()
+    {
+        var outcome = await RegisterHandler(
+                payment: new StubPaymentGateway(PaymentChargeStatus.Conflict))
+            .Handle(RegisterCommand());
+
+        Assert.Equal(RegisterTenantKind.PaymentConflict, outcome.Kind);
+        Assert.Null(outcome.Result);
     }
 
     [Fact]
     public async Task Login_ValidCredentials_ReturnsSameBrokerAndTenant()
     {
-        var tenants = new InMemoryTenantRepository();
         var users = new InMemoryBrokerUserRepository();
-        var hasher = new FakePasswordHasher();
-        var tokens = new FakeTokenIssuer();
-        var registered = await new RegisterTenantHandler(tenants, users, hasher, tokens)
-            .Handle(new RegisterTenantCommand("Firm", "a@b.com", "pw"));
+        var registered = await RegisterHandler(users).Handle(RegisterCommand());
 
-        var login = await new LoginHandler(users, hasher, tokens)
+        var login = await new LoginHandler(users, new FakePasswordHasher(), new FakeTokenIssuer())
             .Handle(new LoginCommand("  A@B.COM  ", "pw"));
 
         Assert.NotNull(login);
-        Assert.Equal(registered!.TenantId, login!.TenantId);
-        Assert.Equal(registered.BrokerId, login.BrokerId);
+        Assert.Equal(registered.Result!.TenantId, login!.TenantId);
+        Assert.Equal(registered.Result.BrokerId, login.BrokerId);
         Assert.Equal("a@b.com", login.Email);
-        Assert.Equal(registered.AccessToken, login.AccessToken);
+        Assert.Equal(registered.Result.AccessToken, login.AccessToken);
     }
 
     [Fact]
     public async Task Login_WrongPassword_ReturnsNull()
     {
-        var tenants = new InMemoryTenantRepository();
         var users = new InMemoryBrokerUserRepository();
-        var hasher = new FakePasswordHasher();
-        var tokens = new FakeTokenIssuer();
-        await new RegisterTenantHandler(tenants, users, hasher, tokens)
-            .Handle(new RegisterTenantCommand("Firm", "a@b.com", "pw"));
+        await RegisterHandler(users).Handle(RegisterCommand());
 
-        var login = await new LoginHandler(users, hasher, tokens)
+        var login = await new LoginHandler(users, new FakePasswordHasher(), new FakeTokenIssuer())
             .Handle(new LoginCommand("a@b.com", "other"));
 
         Assert.Null(login);
@@ -95,6 +127,31 @@ public sealed class AuthHandlerTests
             .Handle(new LoginCommand("missing@x.com", "pw"));
 
         Assert.Null(login);
+    }
+}
+
+file sealed class StubPaymentGateway(PaymentChargeStatus status) : IPaymentGateway
+{
+    public Task<PaymentChargeStatus> Charge(
+        string email,
+        PaymentCard card,
+        string idempotencyKey,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(status);
+}
+
+file sealed class CountingPaymentGateway(PaymentChargeStatus status) : IPaymentGateway
+{
+    public int Calls { get; private set; }
+
+    public Task<PaymentChargeStatus> Charge(
+        string email,
+        PaymentCard card,
+        string idempotencyKey,
+        CancellationToken cancellationToken = default)
+    {
+        Calls++;
+        return Task.FromResult(status);
     }
 }
 
