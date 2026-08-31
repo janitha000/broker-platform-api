@@ -3,7 +3,7 @@ using Origination.Domain.Cases;
 
 namespace Origination.Application.Cases.CreateCase;
 
-public sealed class CreateCaseHandler 
+public sealed class CreateCaseHandler
 {
     private readonly ICaseRepository _caseRepository;
     private readonly ICurrentBroker _currentBroker;

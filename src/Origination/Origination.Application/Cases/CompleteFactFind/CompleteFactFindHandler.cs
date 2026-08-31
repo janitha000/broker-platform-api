@@ -15,7 +15,7 @@ public sealed class CompleteFactFindHandler
 
     public async Task<CompleteFactFindResult?> Handle(
         CompleteFactFindCommand command,
-        CancellationToken cancellationToken = default)    
+        CancellationToken cancellationToken = default)
     {
         var @case = await _caseRepository.GetById(command.CaseId, _currentBroker.TenantId, cancellationToken);
         if (@case is null)

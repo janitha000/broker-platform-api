@@ -16,7 +16,7 @@ public sealed class GetCaseHandler
     public async Task<GetCaseResult?> Handle(GetCaseQuery query, CancellationToken cancellationToken = default)
     {
         var @case = await _caseRepository.GetById(query.CaseId, _currentBroker.TenantId, cancellationToken);
-        if (@case is null) 
+        if (@case is null)
             return null;
 
         FactFindDto? factFind = @case.FactFind is null
@@ -28,7 +28,7 @@ public sealed class GetCaseHandler
                 @case.FactFind.Assets,
                 @case.FactFind.Debts,
                 @case.FactFind.CompletedAt);
-        
+
         return new GetCaseResult(@case.Id, @case.Status, @case.InquiryNotes, factFind);
     }
 }
