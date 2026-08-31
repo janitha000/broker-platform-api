@@ -43,7 +43,11 @@ output "payment_ecr_repository_url" {
 }
 
 output "payment_internal_url" {
-  value = "http://payment-api.${aws_service_discovery_private_dns_namespace.internal.name}:8080"
+  value = "http://payment-api:8080"
+}
+
+output "service_connect_namespace" {
+  value = aws_service_discovery_http_namespace.internal.name
 }
 
 output "identity_sql_secret_arn" {
