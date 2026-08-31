@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Broker.Hosting" Version="1.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
@@ -20,7 +21,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Origination.Application\Origination.Application.csproj" />
     <ProjectReference Include="..\Origination.Infrastructure\Origination.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Shared\Broker.Hosting\Broker.Hosting.csproj" />
   </ItemGroup>
 
 </Project>
