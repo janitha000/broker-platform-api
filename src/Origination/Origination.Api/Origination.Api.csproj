@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Origination.Application\Origination.Application.csproj" />
     <ProjectReference Include="..\Origination.Infrastructure\Origination.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\Broker.Hosting\Broker.Hosting.csproj" />
   </ItemGroup>
 
 </Project>

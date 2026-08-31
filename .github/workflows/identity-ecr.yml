@@ -5,6 +5,7 @@ on:
         branches: [release]
         paths:
             - "src/Identity/**"
+            - "src/Shared/**"
             - "tests/Identity/**"
             - ".github/workflows/identity-ecr.yml"
     workflow_dispatch:
@@ -58,7 +59,7 @@ jobs:
                   REPOSITORY: identity-api
                   IMAGE_TAG: ${{ github.sha }}
               run: |
-                  docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG -t $REGISTRY/$REPOSITORY:latest src/Identity
+                  docker build -f src/Identity/Dockerfile -t $REGISTRY/$REPOSITORY:$IMAGE_TAG -t $REGISTRY/$REPOSITORY:latest .
                   docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
                   docker push $REGISTRY/$REPOSITORY:latest
 

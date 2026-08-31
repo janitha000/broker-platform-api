@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Identity.Api", "Identity.Ap
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Identity.Application.Tests", "..\..\tests\Identity\Identity.Application.Tests\Identity.Application.Tests.csproj", "{8F2DFFE0-54A6-4F07-8D92-60EFA54C37DC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Broker.Hosting", "..\Shared\Broker.Hosting\Broker.Hosting.csproj", "{3AD3732E-1378-4D02-9CC5-283061AFDC13}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{8F2DFFE0-54A6-4F07-8D92-60EFA54C37DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8F2DFFE0-54A6-4F07-8D92-60EFA54C37DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8F2DFFE0-54A6-4F07-8D92-60EFA54C37DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3AD3732E-1378-4D02-9CC5-283061AFDC13}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3AD3732E-1378-4D02-9CC5-283061AFDC13}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3AD3732E-1378-4D02-9CC5-283061AFDC13}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3AD3732E-1378-4D02-9CC5-283061AFDC13}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
