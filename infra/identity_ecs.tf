@@ -40,7 +40,7 @@ resource "aws_ecs_task_definition" "identity" {
       },
       {
         name  = "Payment__BaseUrl"
-        value = "http://${aws_lb.this.dns_name}"
+        value = "http://payment-api.${aws_service_discovery_private_dns_namespace.internal.name}:8080"
       }
     ]
     secrets = [

@@ -63,5 +63,7 @@ resource "aws_ecs_service" "payment" {
     container_port   = 8080
   }
 
-  depends_on = [aws_lb_listener_rule.payment]
+  service_registries {
+    registry_arn = aws_service_discovery_service.payment.arn
+  }
 }
