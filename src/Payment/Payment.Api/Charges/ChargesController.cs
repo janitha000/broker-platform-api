@@ -19,7 +19,19 @@ public sealed class ChargesController : ControllerBase
         [FromBody] CreateChargeCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await _createChargeHandler.Handle(command, cancellationToken);
-        return Ok(result);
+        if (string.IsNullOrWhiteSpace(command.IdempotencyKey)
+            || string.IsNullOrWhiteSpace(command.Email)
+            || command.Card is null
+            || string.IsNullOrWhiteSpace(command.Card.Number))
+            return BadRequest();
+
+        var outcome = await _createChargeHandler.Handle(command, cancellationToken);
+        return outcome.Kind switch
+        {
+            CreateChargeKind.Succeeded => Ok(outcome.Charge),
+            CreateChargeKind.Declined => StatusCode(StatusCodes.Status402PaymentRequired, outcome.Charge),
+            CreateChargeKind.IdempotencyConflict => Conflict(),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
     }
 }
