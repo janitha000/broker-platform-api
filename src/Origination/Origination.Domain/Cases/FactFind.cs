@@ -1,4 +1,5 @@
 namespace Origination.Domain.Cases;
+
 public sealed class FactFind
 {
     public string Objectives { get; set; } = string.Empty;
