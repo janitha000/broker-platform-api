@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Identity.Application\Identity.Application.csproj" />
     <ProjectReference Include="..\Identity.Infrastructure\Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\Broker.Hosting\Broker.Hosting.csproj" />
   </ItemGroup>
 
 </Project>

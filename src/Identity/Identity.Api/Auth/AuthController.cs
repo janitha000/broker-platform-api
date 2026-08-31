@@ -4,6 +4,7 @@ using Identity.Application.Tenants.Login;
 using Identity.Application.Tenants.RegisterTenant;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Broker.Hosting.Auth;
 
 namespace Identity.Api.Auth;
 
