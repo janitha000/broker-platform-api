@@ -1,15 +1,20 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY src/Shared/Broker.Hosting/Broker.Hosting.csproj Shared/Broker.Hosting/
+COPY nuget.config .
 COPY src/Identity/Identity.Domain/Identity.Domain.csproj Identity/Identity.Domain/
 COPY src/Identity/Identity.Application/Identity.Application.csproj Identity/Identity.Application/
 COPY src/Identity/Identity.Infrastructure/Identity.Infrastructure.csproj Identity/Identity.Infrastructure/
 COPY src/Identity/Identity.Api/Identity.Api.csproj Identity/Identity.Api/
 
-RUN dotnet restore Identity/Identity.Api/Identity.Api.csproj
+ARG NUGET_AUTH_TOKEN
+RUN dotnet nuget update source github \
+      --username github \
+      --password "${NUGET_AUTH_TOKEN}" \
+      --store-password-in-clear-text \
+      --configfile nuget.config \
+ && dotnet restore Identity/Identity.Api/Identity.Api.csproj
 
-COPY src/Shared/Broker.Hosting/ Shared/Broker.Hosting/
 COPY src/Identity/Identity.Domain/ Identity/Identity.Domain/
 COPY src/Identity/Identity.Application/ Identity/Identity.Application/
 COPY src/Identity/Identity.Infrastructure/ Identity/Identity.Infrastructure/
