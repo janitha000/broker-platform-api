@@ -30,8 +30,16 @@ output "private_subnet_ids" {
   value = module.vpc.private_subnets
 }
 
-output "ecs_security_group_id" {
-  value = aws_security_group.ecs.id
+output "identity_security_group_id" {
+  value = aws_security_group.identity.id
+}
+
+output "origination_security_group_id" {
+  value = aws_security_group.origination.id
+}
+
+output "payment_security_group_id" {
+  value = aws_security_group.payment.id
 }
 
 output "identity_ecr_repository_url" {

@@ -61,7 +61,7 @@ resource "aws_ecs_service" "payment" {
 
   network_configuration {
     subnets          = module.vpc.public_subnets
-    security_groups  = [aws_security_group.ecs.id]
+    security_groups  = [aws_security_group.payment.id]
     assign_public_ip = true
   }
 

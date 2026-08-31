@@ -78,7 +78,7 @@ resource "aws_ecs_service" "identity" {
 
   network_configuration {
     subnets          = module.vpc.public_subnets
-    security_groups  = [aws_security_group.ecs.id]
+    security_groups  = [aws_security_group.identity.id]
     assign_public_ip = true
   }
 

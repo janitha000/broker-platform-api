@@ -74,7 +74,7 @@ resource "aws_ecs_service" "api" {
 
   network_configuration {
     subnets          = module.vpc.public_subnets
-    security_groups  = [aws_security_group.ecs.id]
+    security_groups  = [aws_security_group.origination.id]
     assign_public_ip = true
   }
 
@@ -84,6 +84,8 @@ resource "aws_ecs_service" "api" {
     container_port   = 8080
   }
 
+  # Client only: no `service` block, so Origination is discoverable by nobody
+  # and can resolve namespace names. Reaching Payment is denied by payment-api-sg.
   service_connect_configuration {
     enabled   = true
     namespace = aws_service_discovery_http_namespace.internal.arn
