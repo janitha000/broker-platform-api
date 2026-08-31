@@ -1,10 +1,10 @@
-resource "aws_cloudwatch_log_group" "identity" {
-  name              = "/ecs/identity-api"
+resource "aws_cloudwatch_log_group" "payment" {
+  name              = "/ecs/payment-api"
   retention_in_days = 7
 }
 
-resource "aws_ecs_task_definition" "identity" {
-  family                   = "identity-api"
+resource "aws_ecs_task_definition" "payment" {
+  family                   = "payment-api"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "256"
@@ -19,7 +19,7 @@ resource "aws_ecs_task_definition" "identity" {
 
   container_definitions = jsonencode([{
     name      = "api"
-    image     = "${aws_ecr_repository.identity.repository_url}:latest"
+    image     = "${aws_ecr_repository.payment.repository_url}:latest"
     essential = true
     portMappings = [{
       containerPort = 8080
@@ -29,34 +29,12 @@ resource "aws_ecs_task_definition" "identity" {
       {
         name  = "ASPNETCORE_ENVIRONMENT"
         value = "Production"
-      },
-      {
-        name  = "Jwt__Issuer"
-        value = "identity"
-      },
-      {
-        name  = "Jwt__Audience"
-        value = "broker-platform"
-      },
-      {
-        name  = "Payment__BaseUrl"
-        value = "http://${aws_lb.this.dns_name}"
-      }
-    ]
-    secrets = [
-      {
-        name      = "ConnectionStrings__Identity"
-        valueFrom = aws_secretsmanager_secret.identity_sql.arn
-      },
-      {
-        name      = "Jwt__Key"
-        valueFrom = aws_secretsmanager_secret.jwt.arn
       }
     ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        awslogs-group         = aws_cloudwatch_log_group.identity.name
+        awslogs-group         = aws_cloudwatch_log_group.payment.name
         awslogs-region        = var.aws_region
         awslogs-stream-prefix = "ecs"
       }
@@ -64,10 +42,10 @@ resource "aws_ecs_task_definition" "identity" {
   }])
 }
 
-resource "aws_ecs_service" "identity" {
-  name            = "identity-api"
+resource "aws_ecs_service" "payment" {
+  name            = "payment-api"
   cluster         = aws_ecs_cluster.this.id
-  task_definition = aws_ecs_task_definition.identity.arn
+  task_definition = aws_ecs_task_definition.payment.arn
   desired_count   = 1
   launch_type     = "FARGATE"
 
@@ -80,10 +58,10 @@ resource "aws_ecs_service" "identity" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.identity.arn
+    target_group_arn = aws_lb_target_group.payment.arn
     container_name   = "api"
     container_port   = 8080
   }
 
-  depends_on = [aws_lb_listener_rule.identity_auth]
+  depends_on = [aws_lb_listener_rule.payment]
 }

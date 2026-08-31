@@ -38,6 +38,10 @@ output "identity_ecr_repository_url" {
   value = aws_ecr_repository.identity.repository_url
 }
 
+output "payment_ecr_repository_url" {
+  value = aws_ecr_repository.payment.repository_url
+}
+
 output "identity_sql_secret_arn" {
   value = aws_secretsmanager_secret.identity_sql.arn
 }

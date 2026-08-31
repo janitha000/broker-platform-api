@@ -25,8 +25,8 @@ resource "aws_iam_role_policy" "execution_secret" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
+      Effect = "Allow"
+      Action = ["secretsmanager:GetSecretValue"]
       Resource = [
         aws_secretsmanager_secret.sql.arn,
         aws_secretsmanager_secret.identity_sql.arn,

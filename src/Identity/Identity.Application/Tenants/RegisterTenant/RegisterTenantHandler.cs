@@ -9,27 +9,47 @@ public sealed class RegisterTenantHandler
     private readonly IBrokerUserRepository _brokerUserRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenIssuer _tokenIssuer;
+    private readonly IPaymentGateway _paymentGateway;
 
     public RegisterTenantHandler(
         ITenantRepository tenantRepository,
         IBrokerUserRepository brokerUserRepository,
         IPasswordHasher passwordHasher,
-        ITokenIssuer tokenIssuer)
+        ITokenIssuer tokenIssuer,
+        IPaymentGateway paymentGateway)
     {
         _tenantRepository = tenantRepository;
         _brokerUserRepository = brokerUserRepository;
         _passwordHasher = passwordHasher;
         _tokenIssuer = tokenIssuer;
+        _paymentGateway = paymentGateway;
     }
 
-    public async Task<RegisterTenantResult?> Handle(
+    public async Task<RegisterTenantOutcome> Handle(
         RegisterTenantCommand command,
         CancellationToken cancellationToken = default)
     {
         var email = command.Email.Trim().ToLowerInvariant();
         var existing = await _brokerUserRepository.GetByEmail(email, cancellationToken);
         if (existing is not null)
-            return null;
+            return new RegisterTenantOutcome(RegisterTenantKind.DuplicateEmail, null);
+
+        var payment = await _paymentGateway.Charge(
+            email,
+            new PaymentCard(
+                command.Card.Number,
+                command.Card.ExpMonth,
+                command.Card.ExpYear,
+                command.Card.Cvc),
+            command.IdempotencyKey.Trim(),
+            cancellationToken);
+
+        if (payment == PaymentChargeStatus.Declined)
+            return new RegisterTenantOutcome(RegisterTenantKind.PaymentDeclined, null);
+        if (payment == PaymentChargeStatus.Conflict)
+            return new RegisterTenantOutcome(RegisterTenantKind.PaymentConflict, null);
+        if (payment != PaymentChargeStatus.Succeeded)
+            return new RegisterTenantOutcome(RegisterTenantKind.PaymentUnavailable, null);
 
         var tenant = new Tenant
         {
@@ -51,10 +71,12 @@ public sealed class RegisterTenantHandler
 
         var accessToken = _tokenIssuer.Issue(brokerUser.Id, brokerUser.TenantId, brokerUser.Email);
 
-        return new RegisterTenantResult(
-            brokerUser.TenantId,
-            brokerUser.Id,
-            brokerUser.Email,
-            accessToken);
+        return new RegisterTenantOutcome(
+            RegisterTenantKind.Succeeded,
+            new RegisterTenantResult(
+                brokerUser.TenantId,
+                brokerUser.Id,
+                brokerUser.Email,
+                accessToken));
     }
 }
