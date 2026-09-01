@@ -7,8 +7,8 @@ resource "aws_ecs_task_definition" "payment" {
   family                   = "payment-api"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "512"
+  memory                   = "1024"
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.task.arn
 
@@ -22,9 +22,19 @@ resource "aws_ecs_task_definition" "payment" {
     image     = "${aws_ecr_repository.payment.repository_url}:latest"
     essential = true
     portMappings = [{
+      name          = "http"
       containerPort = 8080
+      hostPort      = 8080
       protocol      = "tcp"
+      appProtocol   = "http"
     }]
+    healthCheck = {
+      command     = ["CMD-SHELL", "timeout 2 bash -c ':> /dev/tcp/127.0.0.1/8080' || exit 1"]
+      interval    = 30
+      timeout     = 5
+      retries     = 3
+      startPeriod = 60
+    }
     environment = [
       {
         name  = "ASPNETCORE_ENVIRONMENT"
@@ -49,21 +59,47 @@ resource "aws_ecs_service" "payment" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
-  health_check_grace_period_seconds = 120
-
   network_configuration {
     subnets          = module.vpc.public_subnets
-    security_groups  = [aws_security_group.ecs.id]
+    security_groups  = [aws_security_group.payment.id]
     assign_public_ip = true
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.payment.arn
-    container_name   = "api"
-    container_port   = 8080
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.internal.arn
+
+    log_configuration {
+      log_driver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.payment.name
+        awslogs-region        = var.aws_region
+        awslogs-stream-prefix = "service-connect"
+      }
+    }
+
+    service {
+      port_name      = "http"
+      discovery_name = "payment-api"
+
+      client_alias {
+        dns_name = "payment-api"
+        port     = 8080
+      }
+
+      dynamic "tls" {
+        for_each = var.enable_service_connect_tls ? [1] : []
+        content {
+          role_arn = aws_iam_role.service_connect_tls[0].arn
+          kms_key  = aws_kms_key.service_connect_tls[0].arn
+
+          issuer_cert_authority {
+            aws_pca_authority_arn = aws_acmpca_certificate_authority.service_connect[0].arn
+          }
+        }
+      }
+    }
   }
 
-  service_registries {
-    registry_arn = aws_service_discovery_service.payment.arn
-  }
+  depends_on = [aws_acmpca_certificate_authority_certificate.service_connect]
 }

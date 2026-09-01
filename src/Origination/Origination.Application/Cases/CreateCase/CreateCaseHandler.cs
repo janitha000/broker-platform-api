@@ -1,4 +1,5 @@
 using Origination.Application.Abstractions;
+using Origination.Domain.Abstractions;
 using Origination.Domain.Cases;
 
 namespace Origination.Application.Cases.CreateCase;
@@ -8,10 +9,13 @@ public sealed class CreateCaseHandler
     private readonly ICaseRepository _caseRepository;
     private readonly ICurrentBroker _currentBroker;
 
-    public CreateCaseHandler(ICaseRepository caseRepository, ICurrentBroker currentBroker)
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateCaseHandler(ICaseRepository caseRepository, ICurrentBroker currentBroker, IUnitOfWork unitOfWork)
     {
         _caseRepository = caseRepository;
         _currentBroker = currentBroker;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<CreateCaseResult> Handle(CreateCaseCommand command, CancellationToken cancellationToken = default)
@@ -27,6 +31,7 @@ public sealed class CreateCaseHandler
         };
 
         await _caseRepository.Add(@case, cancellationToken);
+        await _unitOfWork.SaveChanges(cancellationToken);
 
         return new CreateCaseResult(@case.Id, @case.Status);
     }

@@ -24,3 +24,12 @@ resource "aws_ecr_repository" "payment" {
     scan_on_push = true
   }
 }
+
+resource "aws_ecr_repository" "notification" {
+  name                 = "notification-api"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}

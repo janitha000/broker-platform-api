@@ -25,3 +25,9 @@ variable "my_ip" {
   description = "Your public IP with /32, for one-off EF migrate. Empty = no extra 1433 rule."
   default     = ""
 }
+
+variable "enable_service_connect_tls" {
+  type        = bool
+  description = "When true, creates ACM PCA + wires Service Connect TLS on Payment. Default false: keep the template, do not apply PCA (billed)."
+  default     = false
+}

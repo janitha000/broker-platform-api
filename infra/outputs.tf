@@ -30,8 +30,16 @@ output "private_subnet_ids" {
   value = module.vpc.private_subnets
 }
 
-output "ecs_security_group_id" {
-  value = aws_security_group.ecs.id
+output "identity_security_group_id" {
+  value = aws_security_group.identity.id
+}
+
+output "origination_security_group_id" {
+  value = aws_security_group.origination.id
+}
+
+output "payment_security_group_id" {
+  value = aws_security_group.payment.id
 }
 
 output "identity_ecr_repository_url" {
@@ -42,8 +50,20 @@ output "payment_ecr_repository_url" {
   value = aws_ecr_repository.payment.repository_url
 }
 
+output "notification_ecr_repository_url" {
+  value = aws_ecr_repository.notification.repository_url
+}
+
 output "payment_internal_url" {
-  value = "http://payment-api.${aws_service_discovery_private_dns_namespace.internal.name}:8080"
+  value = "http://payment-api:8080"
+}
+
+output "service_connect_namespace" {
+  value = aws_service_discovery_http_namespace.internal.name
+}
+
+output "service_connect_pca_arn" {
+  value = var.enable_service_connect_tls ? aws_acmpca_certificate_authority.service_connect[0].arn : null
 }
 
 output "identity_sql_secret_arn" {
@@ -64,4 +84,12 @@ output "ui_cloudfront_distribution_id" {
 
 output "ui_url" {
   value = "https://${aws_cloudfront_distribution.ui.domain_name}"
+}
+
+output "event_bus_name" {
+  value = aws_cloudwatch_event_bus.broker.name
+}
+
+output "notification_queue_url" {
+  value = aws_sqs_queue.notification_commands.url
 }
