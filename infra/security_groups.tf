@@ -79,6 +79,19 @@ resource "aws_security_group" "payment" {
   }
 }
 
+# Notification is not on the ALB. It pulls SQS and talks to RDS only.
+resource "aws_security_group" "notification" {
+  name   = "notification-api-sg"
+  vpc_id = module.vpc.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_security_group" "rds" {
   name   = "origination-rds-sg"
   vpc_id = module.vpc.vpc_id
@@ -87,7 +100,11 @@ resource "aws_security_group" "rds" {
     from_port       = 1433
     to_port         = 1433
     protocol        = "tcp"
-    security_groups = [aws_security_group.identity.id, aws_security_group.origination.id]
+    security_groups = [
+      aws_security_group.identity.id,
+      aws_security_group.origination.id,
+      aws_security_group.notification.id,
+    ]
   }
 
   dynamic "ingress" {

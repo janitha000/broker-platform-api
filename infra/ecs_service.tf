@@ -40,6 +40,22 @@ resource "aws_ecs_task_definition" "api" {
       {
         name  = "Jwt__Audience"
         value = "broker-platform"
+      },
+      {
+        name  = "Messaging__Provider"
+        value = "EventBridge"
+      },
+      {
+        name  = "Messaging__EventBusName"
+        value = aws_cloudwatch_event_bus.broker.name
+      },
+      {
+        name  = "Messaging__Source"
+        value = "origination.broker-platform"
+      },
+      {
+        name  = "Messaging__AwsRegion"
+        value = var.aws_region
       }
     ]
     secrets = [

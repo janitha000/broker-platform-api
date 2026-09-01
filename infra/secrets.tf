@@ -28,6 +28,21 @@ resource "aws_secretsmanager_secret_version" "identity_sql" {
   ])
 }
 
+resource "aws_secretsmanager_secret" "notification_sql" {
+  name = "notification/dev/sql"
+}
+
+resource "aws_secretsmanager_secret_version" "notification_sql" {
+  secret_id = aws_secretsmanager_secret.notification_sql.id
+  secret_string = join("", [
+    "Server=", aws_db_instance.this.address, ",1433;",
+    "Database=Notification;",
+    "User Id=", var.db_username, ";",
+    "Password=", var.db_password, ";",
+    "TrustServerCertificate=True;Encrypt=True"
+  ])
+}
+
 resource "aws_secretsmanager_secret" "jwt" {
   name = "origination/dev/jwt"
 }

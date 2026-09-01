@@ -30,6 +30,7 @@ resource "aws_iam_role_policy" "execution_secret" {
       Resource = [
         aws_secretsmanager_secret.sql.arn,
         aws_secretsmanager_secret.identity_sql.arn,
+        aws_secretsmanager_secret.notification_sql.arn,
         aws_secretsmanager_secret.jwt.arn,
       ]
     }]

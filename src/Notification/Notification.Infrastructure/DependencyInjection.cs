@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Notification.Application.Abstractions;
 using Notification.Domain.Notifications;
 using Notification.Infrastructure.Email;
+using Notification.Infrastructure.Messaging;
 using Notification.Infrastructure.Persistence;
 
 namespace Notification.Infrastructure;
@@ -25,6 +26,9 @@ public static class DependencyInjection
             services.AddSingleton<IEmailProvider, SesEmailProvider>();
         else
             services.AddSingleton<IEmailProvider, MockEmailProvider>();
+
+        services.Configure<SqsWorkerOptions>(configuration.GetSection(SqsWorkerOptions.SectionName));
+        services.AddHostedService<NotificationQueueWorker>();
 
         return services;
     }

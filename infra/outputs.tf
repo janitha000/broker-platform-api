@@ -50,6 +50,10 @@ output "payment_ecr_repository_url" {
   value = aws_ecr_repository.payment.repository_url
 }
 
+output "notification_ecr_repository_url" {
+  value = aws_ecr_repository.notification.repository_url
+}
+
 output "payment_internal_url" {
   value = "http://payment-api:8080"
 }
@@ -80,4 +84,12 @@ output "ui_cloudfront_distribution_id" {
 
 output "ui_url" {
   value = "https://${aws_cloudfront_distribution.ui.domain_name}"
+}
+
+output "event_bus_name" {
+  value = aws_cloudwatch_event_bus.broker.name
+}
+
+output "notification_queue_url" {
+  value = aws_sqs_queue.notification_commands.url
 }

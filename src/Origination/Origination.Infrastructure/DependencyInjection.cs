@@ -19,7 +19,14 @@ public static class DependencyInjection
         services.AddScoped<ICaseRepository, CaseRepository>();
         services.AddScoped<IOutbox, Outbox>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddSingleton<IMessageBus, LoggingMessageBus>();
+        services.Configure<MessagingOptions>(configuration.GetSection(MessagingOptions.SectionName));
+
+        var provider = configuration["Messaging:Provider"] ?? "Logging";
+        if (string.Equals(provider, "EventBridge", StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<IMessageBus, EventBridgeMessageBus>();
+        else
+            services.AddSingleton<IMessageBus, LoggingMessageBus>();
+
         services.AddHostedService<OutboxPublisher>();
         services.AddDbContext<OriginationDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("Origination")));
