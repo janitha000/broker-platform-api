@@ -27,9 +27,8 @@ public sealed class NotificationsController : ControllerBase
         if (string.IsNullOrWhiteSpace(command.IdempotencyKey)
             || string.IsNullOrWhiteSpace(command.Channel)
             || string.IsNullOrWhiteSpace(command.Recipient)
-            || string.IsNullOrWhiteSpace(command.Subject)
-            || string.IsNullOrWhiteSpace(command.Source)
-            || command.Body is null)
+            || string.IsNullOrWhiteSpace(command.TemplateKey)
+            || string.IsNullOrWhiteSpace(command.Source))
             return BadRequest();
 
         var outcome = await _sendNotificationHandler.Handle(command, cancellationToken);
@@ -38,6 +37,7 @@ public sealed class NotificationsController : ControllerBase
             SendNotificationKind.Sent => Ok(outcome.Notification),
             SendNotificationKind.Failed => StatusCode(StatusCodes.Status502BadGateway, outcome.Notification),
             SendNotificationKind.IdempotencyConflict => Conflict(),
+            SendNotificationKind.TemplateNotFound => NotFound(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }

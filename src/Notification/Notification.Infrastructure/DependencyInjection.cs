@@ -1,9 +1,10 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Notification.Application.Abstractions;
 using Notification.Domain.Notifications;
+using Notification.Infrastructure.Email;
 using Notification.Infrastructure.Persistence;
-using Notification.Infrastructure.Senders;
 
 namespace Notification.Infrastructure;
 
@@ -13,8 +14,18 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddSingleton<INotificationRepository, InMemoryNotificationRepository>();
-        services.AddSingleton<INotificationSender, MockNotificationSender>();
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.AddDbContext<NotificationDbContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("Notification")));
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<INotificationTemplateRepository, NotificationTemplateRepository>();
+
+        var provider = configuration["Email:Provider"] ?? "Mock";
+        if (string.Equals(provider, "Ses", StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<IEmailProvider, SesEmailProvider>();
+        else
+            services.AddSingleton<IEmailProvider, MockEmailProvider>();
+
         return services;
     }
 }

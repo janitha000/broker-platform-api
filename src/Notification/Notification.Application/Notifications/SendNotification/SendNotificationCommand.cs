@@ -3,8 +3,8 @@ namespace Notification.Application.Notifications.SendNotification;
 public sealed record SendNotificationCommand(
     string Channel,
     string Recipient,
-    string Subject,
-    string Body,
+    string TemplateKey,
+    Dictionary<string, string>? Data,
     string Source,
     string IdempotencyKey,
     string? CorrelationId);

@@ -5,6 +5,7 @@ public enum SendNotificationKind
     Sent,
     Failed,
     IdempotencyConflict,
+    TemplateNotFound,
 }
 
 public sealed record SendNotificationOutcome(
