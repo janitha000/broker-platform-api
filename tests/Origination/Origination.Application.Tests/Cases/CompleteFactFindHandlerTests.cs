@@ -1,17 +1,20 @@
 using Origination.Application.Abstractions;
 using Origination.Application.Cases.CompleteFactFind;
+using Origination.Domain.Abstractions;
 using Origination.Domain.Cases;
+using Origination.Domain.Outbox;
 
 namespace Origination.Application.Tests.Cases;
 
 public sealed class CompleteFactFindHandlerTests
 {
     [Fact]
-    public async Task Handle_ExistingCase_SetsFactFindAndStatus()
+    public async Task Handle_ExistingCase_SetsFactFindAndEnqueuesOutbox()
     {
         var caseId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var repository = new InMemoryFactFindCaseRepository();
+        var outbox = new InMemoryOutbox();
         await repository.Add(new Case
         {
             Id = caseId,
@@ -21,7 +24,11 @@ public sealed class CompleteFactFindHandlerTests
             CreatedAt = DateTime.UtcNow
         });
 
-        var handler = new CompleteFactFindHandler(repository, new StubCurrentBroker(Guid.NewGuid(), tenantId));
+        var handler = new CompleteFactFindHandler(
+            repository,
+            new StubCurrentBroker(Guid.NewGuid(), tenantId),
+            outbox,
+            new InMemoryUnitOfWork());
         var result = await handler.Handle(new CompleteFactFindCommand(
             caseId,
             "Buy first home",
@@ -40,6 +47,40 @@ public sealed class CompleteFactFindHandlerTests
         Assert.Equal(40_000m, stored.FactFind.Expenses);
         Assert.Equal(80_000m, stored.FactFind.Assets);
         Assert.Equal(15_000m, stored.FactFind.Debts);
+
+        var message = Assert.Single(outbox.Messages);
+        Assert.Equal(OutboxMessageTypes.CaseFactFindCompleted, message.Type);
+        Assert.Equal($"origination:{caseId}:fact-find-completed:email", message.IdempotencyKey);
+        Assert.Null(message.PublishedAt);
+    }
+
+    [Fact]
+    public async Task Handle_SameCaseTwice_DoesNotEnqueueSecondOutboxRow()
+    {
+        var caseId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var repository = new InMemoryFactFindCaseRepository();
+        var outbox = new InMemoryOutbox();
+        await repository.Add(new Case
+        {
+            Id = caseId,
+            TenantId = tenantId,
+            BrokerId = Guid.NewGuid(),
+            Status = CaseStatus.Inquiry,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        var handler = new CompleteFactFindHandler(
+            repository,
+            new StubCurrentBroker(Guid.NewGuid(), tenantId),
+            outbox,
+            new InMemoryUnitOfWork());
+        var command = new CompleteFactFindCommand(caseId, "Buy first home", 1m, 1m, 1m, 1m);
+
+        await handler.Handle(command);
+        await handler.Handle(command);
+
+        Assert.Single(outbox.Messages);
     }
 
     [Fact]
@@ -47,7 +88,9 @@ public sealed class CompleteFactFindHandlerTests
     {
         var handler = new CompleteFactFindHandler(
             new InMemoryFactFindCaseRepository(),
-            new StubCurrentBroker(Guid.NewGuid(), Guid.NewGuid()));
+            new StubCurrentBroker(Guid.NewGuid(), Guid.NewGuid()),
+            new InMemoryOutbox(),
+            new InMemoryUnitOfWork());
 
         var result = await handler.Handle(new CompleteFactFindCommand(
             Guid.NewGuid(),
@@ -62,6 +105,21 @@ file sealed class StubCurrentBroker(Guid brokerId, Guid tenantId) : ICurrentBrok
 {
     public Guid BrokerId { get; } = brokerId;
     public Guid TenantId { get; } = tenantId;
+}
+
+file sealed class InMemoryUnitOfWork : IUnitOfWork
+{
+    public Task SaveChanges(CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+file sealed class InMemoryOutbox : IOutbox
+{
+    public List<OutboxMessage> Messages { get; } = [];
+
+    public Task<bool> Exists(string idempotencyKey, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Messages.Any(m => m.IdempotencyKey == idempotencyKey));
+
+    public void Add(OutboxMessage message) => Messages.Add(message);
 }
 
 file sealed class InMemoryFactFindCaseRepository : ICaseRepository

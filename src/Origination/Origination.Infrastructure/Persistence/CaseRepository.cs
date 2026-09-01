@@ -31,12 +31,12 @@ public sealed class CaseRepository : ICaseRepository
     public async Task Add(Case @case, CancellationToken cancellationToken = default)
     {
         _context.Cases.Add(@case);
-        await _context.SaveChangesAsync(cancellationToken);
+        await Task.CompletedTask;
     }
 
     public async Task Update(Case @case, CancellationToken cancellationToken = default)
     {
         _context.Cases.Update(@case);
-        await _context.SaveChangesAsync(cancellationToken);
+        await Task.CompletedTask;
     }
 }

@@ -1,6 +1,7 @@
 using Origination.Application.Abstractions;
 using Origination.Application.Cases.CreateCase;
 using Origination.Application.Cases.GetCase;
+using Origination.Domain.Abstractions;
 using Origination.Domain.Cases;
 
 namespace Origination.Application.Tests.Cases;
@@ -13,7 +14,7 @@ public sealed class CreateCaseHandlerTests
         var repository = new InMemoryCaseRepository();
         var brokerId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
-        var handler = new CreateCaseHandler(repository, new StubCurrentBroker(brokerId, tenantId));
+        var handler = new CreateCaseHandler(repository, new StubCurrentBroker(brokerId, tenantId), new InMemoryUnitOfWork());
 
         var result = await handler.Handle(new CreateCaseCommand("First home inquiry"));
 
@@ -36,7 +37,7 @@ public sealed class GetCaseHandlerTests
         var repository = new InMemoryCaseRepository();
         var tenantA = Guid.NewGuid();
         var tenantB = Guid.NewGuid();
-        var created = await new CreateCaseHandler(repository, new StubCurrentBroker(Guid.NewGuid(), tenantA))
+        var created = await new CreateCaseHandler(repository, new StubCurrentBroker(Guid.NewGuid(), tenantA), new InMemoryUnitOfWork())
             .Handle(new CreateCaseCommand("notes"));
 
         var result = await new GetCaseHandler(repository, new StubCurrentBroker(Guid.NewGuid(), tenantB))
@@ -44,6 +45,11 @@ public sealed class GetCaseHandlerTests
 
         Assert.Null(result);
     }
+}
+
+file sealed class InMemoryUnitOfWork : IUnitOfWork
+{
+    public Task SaveChanges(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 
 file sealed class StubCurrentBroker(Guid brokerId, Guid tenantId) : ICurrentBroker
