@@ -86,6 +86,20 @@ resource "aws_ecs_service" "payment" {
         dns_name = "payment-api"
         port     = 8080
       }
+
+      dynamic "tls" {
+        for_each = var.enable_service_connect_tls ? [1] : []
+        content {
+          role_arn = aws_iam_role.service_connect_tls[0].arn
+          kms_key  = aws_kms_key.service_connect_tls[0].arn
+
+          issuer_cert_authority {
+            aws_pca_authority_arn = aws_acmpca_certificate_authority.service_connect[0].arn
+          }
+        }
+      }
     }
   }
+
+  depends_on = [aws_acmpca_certificate_authority_certificate.service_connect]
 }

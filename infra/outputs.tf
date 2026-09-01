@@ -58,6 +58,10 @@ output "service_connect_namespace" {
   value = aws_service_discovery_http_namespace.internal.name
 }
 
+output "service_connect_pca_arn" {
+  value = var.enable_service_connect_tls ? aws_acmpca_certificate_authority.service_connect[0].arn : null
+}
+
 output "identity_sql_secret_arn" {
   value = aws_secretsmanager_secret.identity_sql.arn
 }
