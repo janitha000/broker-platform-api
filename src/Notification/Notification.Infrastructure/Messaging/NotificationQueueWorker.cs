@@ -7,6 +7,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Notification.Application.Notifications.SendNotification;
+using Notification.Application.Notifications.SendNotification;
+using Notification.Domain.Inbox;
 
 namespace Notification.Infrastructure.Messaging;
 
@@ -73,6 +75,35 @@ public sealed class NotificationQueueWorker : BackgroundService
         }
     }
 
+    // private async Task HandleMessage(IAmazonSQS sqs, Message message, CancellationToken cancellationToken)
+    // {
+    //     var envelope = JsonSerializer.Deserialize<EventBridgeSqsEnvelope>(message.Body, JsonOptions);
+    //     var detail = envelope?.Detail;
+    //     if (detail is null || string.IsNullOrWhiteSpace(detail.IdempotencyKey))
+    //         throw new InvalidOperationException("SQS body is not a CaseFactFindCompleted EventBridge event.");
+
+    //     await using var scope = _scopeFactory.CreateAsyncScope();
+    //     var handler = scope.ServiceProvider.GetRequiredService<SendNotificationHandler>();
+
+    //     var outcome = await handler.Handle(
+    //         new SendNotificationCommand(
+    //             string.IsNullOrWhiteSpace(detail.Channel) ? "Email" : detail.Channel,
+    //             detail.Recipient ?? $"broker-{detail.BrokerId}@invalid.local",
+    //             detail.TemplateKey,
+    //             detail.Data,
+    //             "origination",
+    //             detail.IdempotencyKey,
+    //             detail.CorrelationId),
+    //         cancellationToken);
+
+    //     if (outcome.Kind is SendNotificationKind.TemplateNotFound)
+    //         throw new InvalidOperationException($"Unknown template {detail.TemplateKey}");
+
+    //     // Sent, Failed (provider), Conflict (already processed) → delete
+    //     await sqs.DeleteMessageAsync(_options.QueueUrl, message.ReceiptHandle, cancellationToken);
+    // }
+
+
     private async Task HandleMessage(IAmazonSQS sqs, Message message, CancellationToken cancellationToken)
     {
         var envelope = JsonSerializer.Deserialize<EventBridgeSqsEnvelope>(message.Body, JsonOptions);
@@ -80,24 +111,29 @@ public sealed class NotificationQueueWorker : BackgroundService
         if (detail is null || string.IsNullOrWhiteSpace(detail.IdempotencyKey))
             throw new InvalidOperationException("SQS body is not a CaseFactFindCompleted EventBridge event.");
 
+        var payload = JsonSerializer.Serialize(new SendNotificationCommand(
+            string.IsNullOrWhiteSpace(detail.Channel) ? "Email" : detail.Channel,
+            detail.Recipient ?? $"broker-{detail.BrokerId}@invalid.local",
+            detail.TemplateKey,
+            detail.Data,
+            "origination",
+            detail.IdempotencyKey,
+            detail.CorrelationId));
+
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var handler = scope.ServiceProvider.GetRequiredService<SendNotificationHandler>();
+        var inbox = scope.ServiceProvider.GetRequiredService<IInbox>();
 
-        var outcome = await handler.Handle(
-            new SendNotificationCommand(
-                string.IsNullOrWhiteSpace(detail.Channel) ? "Email" : detail.Channel,
-                detail.Recipient ?? $"broker-{detail.BrokerId}@invalid.local",
-                detail.TemplateKey,
-                detail.Data,
-                "origination",
-                detail.IdempotencyKey,
-                detail.CorrelationId),
-            cancellationToken);
+        await inbox.TryAdd(new InboxMessage
+        {
+            Id = Guid.NewGuid(),
+            Type = envelope.DetailType ?? "CaseFactFindCompleted",
+            Payload = payload,
+            IdempotencyKey = detail.IdempotencyKey,
+            Status = InboxStatus.Received,
+            ReceivedAt = DateTime.UtcNow,
+            NextAttemptAt = DateTime.UtcNow,
+        }, cancellationToken);
 
-        if (outcome.Kind is SendNotificationKind.TemplateNotFound)
-            throw new InvalidOperationException($"Unknown template {detail.TemplateKey}");
-
-        // Sent, Failed (provider), Conflict (already processed) → delete
         await sqs.DeleteMessageAsync(_options.QueueUrl, message.ReceiptHandle, cancellationToken);
     }
 }

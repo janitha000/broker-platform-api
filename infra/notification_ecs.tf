@@ -68,6 +68,8 @@ resource "aws_ecs_task_definition" "notification" {
       }
     }
   }])
+
+  depends_on = [aws_secretsmanager_secret_version.notification_sql]
 }
 
 resource "aws_ecs_service" "notification" {
