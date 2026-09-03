@@ -15,16 +15,18 @@ Auth0 **Organizations** are not used yet. Tenancy lives in Identity SQL (`Tenant
 
 ## Auth0 tenant objects
 
-Four artefacts. Do not collapse them into one “app”.
+Six artefacts. Do not collapse them into one “app”. Do not reuse BFF or Management secrets for Payment.
 
 | Object | Type | Used by | Purpose |
 |---|---|---|---|
 | **Broker Platform App** | Regular Web Application (confidential) | Identity BFF | Authorization Code login. Client secret only on the server. |
 | **Broker Identity Management** | Machine to Machine | Identity, no browser | Management API: `create:users`, `read:users`, app metadata |
-| **Broker Platform API** | Resource server | Audience on `/authorize` | Identifier `https://api.broker-platform.com`. Not an HTTP service. |
+| **Identity Service** | Machine to Machine | Identity → Payment | Client credentials on Payment API; scope `payments:charge` |
+| **Broker Platform API** | Resource server | Audience on `/authorize` | Identifier `https://api.broker-platform.com`. User plane only. |
+| **Payment API** | Resource server | M2M audience | Identifier `https://payment.broker-platform.com`. Not the user API. |
 | **Username-Password-Authentication** | Database connection | Universal Login | Sign-ups **disabled**; Identity creates users after payment |
 
-The Regular Web App must be allowed to request the Broker Platform API (user-delegated access / API grant). The M2M app must **not** be a client of Broker Platform API; it only calls Auth0 Management API.
+The Regular Web App must be allowed to request the Broker Platform API (user-delegated access / API grant). **Broker Identity Management** must **not** be a client of Broker Platform API or Payment API; it only calls Auth0 Management API. **Identity Service** must **not** call Management API.
 
 Login Experience for the BFF app must be **Individuals** (not Business Users). Business Users requires `organization` on `/authorize`, which this code does not send.
 
@@ -64,12 +66,30 @@ ASP.NET maps `Auth0__*` env vars to `Auth0:*`.
 | `Auth0:Audience` | ECS env | `https://api.broker-platform.com` |
 | `Auth0:ClientId` | ECS env | Regular Web App |
 | `Auth0:ClientSecret` | Secrets Manager `identity/dev/auth0-bff` | BFF |
-| `Auth0:ManagementClientId` | ECS env | M2M app |
-| `Auth0:ManagementClientSecret` | Secrets Manager `identity/dev/auth0-mgmt` | M2M |
+| `Auth0:ManagementClientId` | ECS env | Management M2M |
+| `Auth0:ManagementClientSecret` | Secrets Manager `identity/dev/auth0-mgmt` | Management M2M |
+| `Auth0:PaymentAudience` | ECS env | `https://payment.broker-platform.com` |
+| `Auth0:PaymentClientId` | ECS env | Identity Service M2M |
+| `Auth0:PaymentClientSecret` | Secrets Manager `identity/dev/auth0-payment` | Identity Service |
 | `Auth0:AppBaseUrl` | ECS env | SPA origin (5173 or CloudFront). Required at startup. |
 | `Auth0:DatabaseConnection` | default | `Username-Password-Authentication` |
 
-Local: `dotnet user-secrets` for both client secrets; non-secrets in `appsettings.Development.json`.
+Local: `dotnet user-secrets` for BFF, Management, and Payment client secrets; non-secrets in `appsettings.Development.json`.
+
+---
+
+## Identity service tokens (client credentials)
+
+Identity never sends Auth0 user tokens to Payment. Two cached M2M tokens, separate clients and caches:
+
+| Token | HttpClient base | Audience | Scope | Used by |
+|---|---|---|---|---|
+| Management | `https://{Domain}/` | `https://{Domain}/api/v2/` | (none) | `HttpAuth0UserDirectory` |
+| Payment | `https://{Domain}/` (second client) | `Auth0:PaymentAudience` | `payments:charge` | `HttpPaymentGateway` |
+
+`Auth0ClientCredentials` POSTs `/oauth/token`, caches until ~30s before expiry, and uses one `SemaphoreSlim` per cache. Payment HTTP still uses `Payment:BaseUrl` (`http://localhost:5288` / `http://payment-api:8080`); the Auth0 token client is not that host.
+
+If the Payment token request fails, register treats Payment as unavailable (no charge). Payment API validates JWT `aud` = Payment API identifier and policy `payments:charge`.
 
 Terraform: `api/infra/identity_ecs.tf` (env + secrets), `api/infra/secrets.tf`, execution role `GetSecretValue`. GitHub Actions does **not** set ECS env; `terraform apply` registers a new task definition. `force-new-deployment` only restarts the current revision.
 
@@ -192,7 +212,7 @@ sequenceDiagram
     participant Identity
     participant Payment
     participant DB as Identity SQL
-    participant Auth0 as Auth0 Management API
+    participant Auth0
 
     Broker->>SPA: Register form
     SPA->>Identity: POST /auth/register
@@ -200,7 +220,8 @@ sequenceDiagram
     alt Existing BrokerUser, Auth0UserId empty
         Identity->>Auth0: Provision user (retry, no second charge)
     else New email
-        Identity->>Payment: Charge
+        Identity->>Auth0: client_credentials (Payment API)
+        Identity->>Payment: POST /payments/charges (Bearer)
         Identity->>DB: Tenant + BrokerUser
         Identity->>Auth0: POST /api/v2/users (client credentials)
     end

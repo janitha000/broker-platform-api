@@ -13,4 +13,7 @@ public sealed class Auth0Options
     public string ManagementClientId { get; set; } = string.Empty;
     public string ManagementClientSecret { get; set; } = string.Empty;
     public string DatabaseConnection { get; set; } = "Username-Password-Authentication";
+    public string PaymentAudience { get; set; } = string.Empty;
+    public string PaymentClientId { get; set; } = string.Empty;
+    public string PaymentClientSecret { get; set; } = string.Empty;
 }

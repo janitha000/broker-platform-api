@@ -87,44 +87,15 @@ public sealed class HttpAuth0UserDirectory : IAuth0UserDirectory
         }
     }
 
-    private async Task<string?> GetManagementToken(CancellationToken cancellationToken)
-    {
-        if (_tokenCache.AccessToken is not null
-            && _tokenCache.ExpiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
-            return _tokenCache.AccessToken;
-
-        await _tokenCache.Gate.WaitAsync(cancellationToken);
-        try
-        {
-            if (_tokenCache.AccessToken is not null
-                && _tokenCache.ExpiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
-                return _tokenCache.AccessToken;
-
-            using var content = new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["grant_type"] = "client_credentials",
-                ["client_id"] = _options.ManagementClientId,
-                ["client_secret"] = _options.ManagementClientSecret,
-                ["audience"] = $"https://{_options.Domain}/api/v2/",
-            });
-
-            using var response = await _http.PostAsync("oauth/token", content, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            var body = await response.Content.ReadFromJsonAsync<Auth0TokenResponse>(Json, cancellationToken);
-            if (string.IsNullOrWhiteSpace(body?.AccessToken))
-                return null;
-
-            _tokenCache.AccessToken = body.AccessToken;
-            _tokenCache.ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(Math.Max(body.ExpiresIn - 30, 60));
-            return body.AccessToken;
-        }
-        finally
-        {
-            _tokenCache.Gate.Release();
-        }
-    }
+    private Task<string?> GetManagementToken(CancellationToken cancellationToken) =>
+        Auth0ClientCredentials.GetAccessToken(
+            _http,
+            _tokenCache,
+            _options.ManagementClientId,
+            _options.ManagementClientSecret,
+            $"https://{_options.Domain}/api/v2/",
+            scope: null,
+            cancellationToken);
 
     private async Task<string?> FindUserIdByEmail(
         string token,
@@ -144,25 +115,9 @@ public sealed class HttpAuth0UserDirectory : IAuth0UserDirectory
         return users?.FirstOrDefault()?.UserId;
     }
 
-    private sealed class Auth0TokenResponse
-    {
-        [JsonPropertyName("access_token")]
-        public string? AccessToken { get; set; }
-
-        [JsonPropertyName("expires_in")]
-        public int ExpiresIn { get; set; }
-    }
-
     private sealed class Auth0UserResponse
     {
         [JsonPropertyName("user_id")]
         public string? UserId { get; set; }
     }
-}
-
-public sealed class Auth0ManagementTokenCache
-{
-    public SemaphoreSlim Gate { get; } = new(1, 1);
-    public string? AccessToken { get; set; }
-    public DateTimeOffset ExpiresAt { get; set; }
 }
