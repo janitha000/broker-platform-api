@@ -20,13 +20,15 @@ public sealed class AuthHandlerTests
     private static RegisterTenantHandler RegisterHandler(
         IBrokerUserRepository? users = null,
         IPaymentGateway? payment = null,
-        ITenantRepository? tenants = null) =>
+        ITenantRepository? tenants = null,
+        IAuth0UserDirectory? auth0 = null) =>
         new(
             tenants ?? new InMemoryTenantRepository(),
             users ?? new InMemoryBrokerUserRepository(),
             new FakePasswordHasher(),
             new FakeTokenIssuer(),
-            payment ?? new StubPaymentGateway(PaymentChargeStatus.Succeeded));
+            payment ?? new StubPaymentGateway(PaymentChargeStatus.Succeeded),
+            auth0 ?? new StubAuth0UserDirectory(Auth0ProvisionKind.Succeeded, "auth0|1"));
 
     [Fact]
     public async Task Register_CreatesTenantAndUser_AndReturnsToken()
@@ -49,6 +51,7 @@ public sealed class AuthHandlerTests
         Assert.NotNull(stored);
         Assert.Equal(result.TenantId, stored!.TenantId);
         Assert.Equal("hash:secret", stored.PasswordHash);
+        Assert.Equal("auth0|1", stored.Auth0UserId);
     }
 
     [Fact]
@@ -64,6 +67,43 @@ public sealed class AuthHandlerTests
 
         Assert.Equal(RegisterTenantKind.DuplicateEmail, second.Kind);
         Assert.Equal(1, payment.Calls);
+    }
+
+    [Fact]
+    public async Task Register_Auth0Unavailable_DoesNotReturnToken()
+    {
+        var users = new InMemoryBrokerUserRepository();
+        var outcome = await RegisterHandler(
+                users,
+                auth0: new StubAuth0UserDirectory(Auth0ProvisionKind.Failed, null))
+            .Handle(RegisterCommand());
+
+        Assert.Equal(RegisterTenantKind.IdentityProviderUnavailable, outcome.Kind);
+        Assert.Null(outcome.Result);
+        var stored = await users.GetByEmail("a@b.com");
+        Assert.NotNull(stored);
+        Assert.Null(stored!.Auth0UserId);
+    }
+
+    [Fact]
+    public async Task Register_RetriesAuth0_WhenUserExistsWithoutAuth0Id()
+    {
+        var users = new InMemoryBrokerUserRepository();
+        var payment = new CountingPaymentGateway(PaymentChargeStatus.Succeeded);
+        var auth0 = new CountingAuth0UserDirectory();
+        auth0.Results.Enqueue(new Auth0ProvisionResult(Auth0ProvisionKind.Failed, null));
+        auth0.Results.Enqueue(new Auth0ProvisionResult(Auth0ProvisionKind.Succeeded, "auth0|retry"));
+        var handler = RegisterHandler(users, payment, auth0: auth0);
+        var command = RegisterCommand();
+
+        var first = await handler.Handle(command);
+        var second = await handler.Handle(command);
+
+        Assert.Equal(RegisterTenantKind.IdentityProviderUnavailable, first.Kind);
+        Assert.Equal(RegisterTenantKind.Succeeded, second.Kind);
+        Assert.Equal(1, payment.Calls);
+        Assert.Equal(2, auth0.Calls);
+        Assert.Equal("auth0|retry", (await users.GetByEmail("a@b.com"))!.Auth0UserId);
     }
 
     [Fact]
@@ -135,6 +175,21 @@ public sealed class AuthHandlerTests
     }
 
     [Fact]
+    public async Task CompleteAuth0Login_KnownSub_ReturnsBroker()
+    {
+        var users = new InMemoryBrokerUserRepository();
+        await RegisterHandler(users).Handle(RegisterCommand());
+        var stored = await users.GetByEmail("a@b.com");
+
+        var login = await new CompleteAuth0LoginHandler(users, new FakeTokenIssuer())
+            .Handle(new CompleteAuth0LoginCommand("other@x.com", stored!.Auth0UserId!));
+
+        Assert.NotNull(login);
+        Assert.Equal(stored.Id, login!.BrokerId);
+        Assert.Equal("a@b.com", login.Email);
+    }
+
+    [Fact]
     public async Task CompleteAuth0Login_UnknownEmail_ReturnsNull()
     {
         var login = await new CompleteAuth0LoginHandler(
@@ -180,6 +235,34 @@ file sealed class CountingPaymentGateway(PaymentChargeStatus status) : IPaymentG
     {
         Calls++;
         return Task.FromResult(status);
+    }
+}
+
+file sealed class StubAuth0UserDirectory(Auth0ProvisionKind kind, string? userId) : IAuth0UserDirectory
+{
+    public Task<Auth0ProvisionResult> ProvisionUser(
+        string email,
+        string password,
+        Guid tenantId,
+        Guid brokerId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new Auth0ProvisionResult(kind, userId));
+}
+
+file sealed class CountingAuth0UserDirectory : IAuth0UserDirectory
+{
+    public int Calls { get; private set; }
+    public Queue<Auth0ProvisionResult> Results { get; } = new();
+
+    public Task<Auth0ProvisionResult> ProvisionUser(
+        string email,
+        string password,
+        Guid tenantId,
+        Guid brokerId,
+        CancellationToken cancellationToken = default)
+    {
+        Calls++;
+        return Task.FromResult(Results.Dequeue());
     }
 }
 
@@ -235,5 +318,19 @@ file sealed class InMemoryBrokerUserRepository : IBrokerUserRepository
     {
         _users.TryGetValue(id, out var user);
         return Task.FromResult(user);
+    }
+
+    public Task<BrokerUser?> GetByAuth0UserId(
+        string auth0UserId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = _users.Values.FirstOrDefault(u => u.Auth0UserId == auth0UserId);
+        return Task.FromResult(user);
+    }
+
+    public Task Update(BrokerUser brokerUser, CancellationToken cancellationToken = default)
+    {
+        _users[brokerUser.Id] = brokerUser;
+        return Task.CompletedTask;
     }
 }

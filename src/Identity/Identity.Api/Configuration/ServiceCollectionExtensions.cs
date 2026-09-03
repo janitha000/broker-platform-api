@@ -53,8 +53,11 @@ public static class ServiceCollectionExtensions
             || string.IsNullOrWhiteSpace(auth0.ClientId)
             || string.IsNullOrWhiteSpace(auth0.ClientSecret)
             || string.IsNullOrWhiteSpace(auth0.AppBaseUrl)
-            || string.IsNullOrWhiteSpace(auth0.Audience))
-            throw new InvalidOperationException("Auth0:Domain, Audience, ClientId, ClientSecret, and AppBaseUrl are required.");
+            || string.IsNullOrWhiteSpace(auth0.Audience)
+            || string.IsNullOrWhiteSpace(auth0.ManagementClientId)
+            || string.IsNullOrWhiteSpace(auth0.ManagementClientSecret))
+            throw new InvalidOperationException(
+                "Auth0:Domain, Audience, ClientId, ClientSecret, AppBaseUrl, ManagementClientId, and ManagementClientSecret are required.");
 
         services.AddAuthentication()
             .AddCookie(Auth0Auth.CookieScheme, options =>

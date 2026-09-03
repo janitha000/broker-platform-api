@@ -10,4 +10,7 @@ public sealed class Auth0Options
     public string ClientSecret { get; set; } = string.Empty;
     /// <summary>SPA origin: http://localhost:5173 or https://d9oy49gmln888.cloudfront.net</summary>
     public string AppBaseUrl { get; set; } = string.Empty;
+    public string ManagementClientId { get; set; } = string.Empty;
+    public string ManagementClientSecret { get; set; } = string.Empty;
+    public string DatabaseConnection { get; set; } = "Username-Password-Authentication";
 }

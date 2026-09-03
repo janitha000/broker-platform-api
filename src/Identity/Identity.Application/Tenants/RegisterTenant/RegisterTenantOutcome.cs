@@ -7,6 +7,7 @@ public enum RegisterTenantKind
     PaymentDeclined,
     PaymentConflict,
     PaymentUnavailable,
+    IdentityProviderUnavailable,
 }
 
 public sealed record RegisterTenantOutcome(

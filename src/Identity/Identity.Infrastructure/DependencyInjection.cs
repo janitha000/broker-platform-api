@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.Configure<PaymentOptions>(configuration.GetSection(PaymentOptions.SectionName));
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
         services.AddSingleton<ITokenIssuer, JwtTokenIssuer>();
+        services.AddSingleton<Auth0ManagementTokenCache>();
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IBrokerUserRepository, BrokerUserRepository>();
         services.AddDbContext<IdentityDbContext>(options =>
@@ -32,6 +33,14 @@ public static class DependencyInjection
 
             client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
             client.Timeout = TimeSpan.FromSeconds(10);
+        });
+
+        services.Configure<Auth0Options>(configuration.GetSection(Auth0Options.SectionName));
+        services.AddHttpClient<IAuth0UserDirectory, HttpAuth0UserDirectory>((sp, client) =>
+        {
+            var auth0 = sp.GetRequiredService<IOptions<Auth0Options>>().Value;
+            client.BaseAddress = new Uri($"https://{auth0.Domain}/");
+            client.Timeout = TimeSpan.FromSeconds(15);
         });
         return services;
     }

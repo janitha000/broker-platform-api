@@ -62,6 +62,7 @@ public sealed class AuthController : ControllerBase
             RegisterTenantKind.PaymentConflict => Conflict(),
             RegisterTenantKind.PaymentDeclined => StatusCode(StatusCodes.Status402PaymentRequired),
             RegisterTenantKind.PaymentUnavailable => StatusCode(StatusCodes.Status503ServiceUnavailable),
+            RegisterTenantKind.IdentityProviderUnavailable => StatusCode(StatusCodes.Status503ServiceUnavailable),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }

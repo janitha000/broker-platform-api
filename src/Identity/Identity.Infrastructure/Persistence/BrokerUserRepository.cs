@@ -27,10 +27,25 @@ public sealed class BrokerUserRepository : IBrokerUserRepository
             .FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken);
     }
 
+    public async Task<BrokerUser?> GetByAuth0UserId(
+        string auth0UserId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.BrokerUsers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Auth0UserId == auth0UserId, cancellationToken);
+    }
+
     public async Task<BrokerUser> Add(BrokerUser brokerUser, CancellationToken cancellationToken = default)
     {
         _context.BrokerUsers.Add(brokerUser);
         await _context.SaveChangesAsync(cancellationToken);
         return brokerUser;
+    }
+
+    public async Task Update(BrokerUser brokerUser, CancellationToken cancellationToken = default)
+    {
+        _context.BrokerUsers.Update(brokerUser);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }

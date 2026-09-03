@@ -37,6 +37,13 @@ public sealed class BrokerUserConfiguration : IEntityTypeConfiguration<BrokerUse
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 
+        builder.Property(u => u.Auth0UserId)
+            .HasMaxLength(128);
+
+        builder.HasIndex(u => u.Auth0UserId)
+            .IsUnique()
+            .HasFilter("[Auth0UserId] IS NOT NULL");
+
         builder.HasOne<Tenant>()
             .WithMany()
             .HasForeignKey(u => u.TenantId)

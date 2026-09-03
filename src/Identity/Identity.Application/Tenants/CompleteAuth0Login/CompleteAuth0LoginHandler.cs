@@ -21,11 +21,19 @@ public sealed class CompleteAuth0LoginHandler
         CompleteAuth0LoginCommand command,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(command.Email))
-            return null;
+        BrokerUser? user = null;
+        if (!string.IsNullOrWhiteSpace(command.Auth0Sub))
+            user = await _brokerUserRepository.GetByAuth0UserId(command.Auth0Sub, cancellationToken);
 
-        var email = command.Email.Trim().ToLowerInvariant();
-        var user = await _brokerUserRepository.GetByEmail(email, cancellationToken);
+        if (user is null)
+        {
+            if (string.IsNullOrWhiteSpace(command.Email))
+                return null;
+
+            var email = command.Email.Trim().ToLowerInvariant();
+            user = await _brokerUserRepository.GetByEmail(email, cancellationToken);
+        }
+
         if (user is null)
             return null;
 

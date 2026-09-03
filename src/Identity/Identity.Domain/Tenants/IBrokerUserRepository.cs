@@ -6,5 +6,9 @@ public interface IBrokerUserRepository
 
     Task<BrokerUser?> GetByEmail(string email, CancellationToken cancellationToken = default);
 
+    Task<BrokerUser?> GetByAuth0UserId(string auth0UserId, CancellationToken cancellationToken = default);
+
     Task<BrokerUser> Add(BrokerUser brokerUser, CancellationToken cancellationToken = default);
+
+    Task Update(BrokerUser brokerUser, CancellationToken cancellationToken = default);
 }

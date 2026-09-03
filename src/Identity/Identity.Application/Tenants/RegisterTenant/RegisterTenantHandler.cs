@@ -10,19 +10,22 @@ public sealed class RegisterTenantHandler
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenIssuer _tokenIssuer;
     private readonly IPaymentGateway _paymentGateway;
+    private readonly IAuth0UserDirectory _auth0UserDirectory;
 
     public RegisterTenantHandler(
         ITenantRepository tenantRepository,
         IBrokerUserRepository brokerUserRepository,
         IPasswordHasher passwordHasher,
         ITokenIssuer tokenIssuer,
-        IPaymentGateway paymentGateway)
+        IPaymentGateway paymentGateway,
+        IAuth0UserDirectory auth0UserDirectory)
     {
         _tenantRepository = tenantRepository;
         _brokerUserRepository = brokerUserRepository;
         _passwordHasher = passwordHasher;
         _tokenIssuer = tokenIssuer;
         _paymentGateway = paymentGateway;
+        _auth0UserDirectory = auth0UserDirectory;
     }
 
     public async Task<RegisterTenantOutcome> Handle(
@@ -32,7 +35,12 @@ public sealed class RegisterTenantHandler
         var email = command.Email.Trim().ToLowerInvariant();
         var existing = await _brokerUserRepository.GetByEmail(email, cancellationToken);
         if (existing is not null)
-            return new RegisterTenantOutcome(RegisterTenantKind.DuplicateEmail, null);
+        {
+            if (!string.IsNullOrEmpty(existing.Auth0UserId))
+                return new RegisterTenantOutcome(RegisterTenantKind.DuplicateEmail, null);
+
+            return await AttachAuth0(existing, command.Password, cancellationToken);
+        }
 
         var payment = await _paymentGateway.Charge(
             email,
@@ -69,14 +77,29 @@ public sealed class RegisterTenantHandler
         };
         brokerUser = await _brokerUserRepository.Add(brokerUser, cancellationToken);
 
-        var accessToken = _tokenIssuer.Issue(brokerUser.Id, brokerUser.TenantId, brokerUser.Email);
+        return await AttachAuth0(brokerUser, command.Password, cancellationToken);
+    }
 
+    private async Task<RegisterTenantOutcome> AttachAuth0(
+        BrokerUser user,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        var provision = await _auth0UserDirectory.ProvisionUser(
+            user.Email,
+            password,
+            user.TenantId,
+            user.Id,
+            cancellationToken);
+        if (provision.Kind != Auth0ProvisionKind.Succeeded || provision.UserId is null)
+            return new RegisterTenantOutcome(RegisterTenantKind.IdentityProviderUnavailable, null);
+
+        user.Auth0UserId = provision.UserId;
+        await _brokerUserRepository.Update(user, cancellationToken);
+
+        var accessToken = _tokenIssuer.Issue(user.Id, user.TenantId, user.Email);
         return new RegisterTenantOutcome(
             RegisterTenantKind.Succeeded,
-            new RegisterTenantResult(
-                brokerUser.TenantId,
-                brokerUser.Id,
-                brokerUser.Email,
-                accessToken));
+            new RegisterTenantResult(user.TenantId, user.Id, user.Email, accessToken));
     }
 }

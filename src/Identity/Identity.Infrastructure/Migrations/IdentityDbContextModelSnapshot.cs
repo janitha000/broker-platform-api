@@ -28,6 +28,10 @@ namespace Identity.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Auth0UserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -55,6 +59,10 @@ namespace Identity.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Auth0UserId")
+                        .IsUnique()
+                        .HasFilter("[Auth0UserId] IS NOT NULL");
 
                     b.HasIndex("Email")
                         .IsUnique();
