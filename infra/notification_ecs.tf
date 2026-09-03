@@ -68,13 +68,15 @@ resource "aws_ecs_task_definition" "notification" {
       }
     }
   }])
+
+  depends_on = [aws_secretsmanager_secret_version.notification_sql]
 }
 
 resource "aws_ecs_service" "notification" {
   name            = "notification-api"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.notification.arn
-  desired_count   = 1
+  desired_count   = var.ecs_desired_count
   launch_type     = "FARGATE"
 
   network_configuration {

@@ -44,7 +44,27 @@ resource "aws_ecs_task_definition" "identity" {
       {
         name  = "Payment__BaseUrl"
         value = "http://payment-api:8080"
-      }
+      },
+      {
+        name  = "Auth0__Domain"
+        value = "dev-ggsd0s-z.us.auth0.com"
+      },
+      {
+        name  = "Auth0__Audience"
+        value = "https://api.broker-platform.com"
+      },
+      {
+        name  = "Auth0__ClientId"
+        value = "q6NBsRyhYywqbUR2wnFUo4o4FyDbXIQZ"
+      },
+      {
+        name  = "Auth0__ManagementClientId"
+        value = "KqScOfMotsI5olraxTZdcP4Z3cEsvnsB"
+      },
+      {
+        name  = "Auth0__AppBaseUrl"
+        value = "https://d9oy49gmln888.cloudfront.net"
+      },
     ]
     secrets = [
       {
@@ -54,6 +74,14 @@ resource "aws_ecs_task_definition" "identity" {
       {
         name      = "Jwt__Key"
         valueFrom = aws_secretsmanager_secret.jwt.arn
+      },
+      {
+        name      = "Auth0__ClientSecret"
+        valueFrom = aws_secretsmanager_secret.auth0_client.arn
+      },
+      {
+        name      = "Auth0__ManagementClientSecret"
+        valueFrom = aws_secretsmanager_secret.auth0_management.arn
       }
     ]
     logConfiguration = {
@@ -65,13 +93,18 @@ resource "aws_ecs_task_definition" "identity" {
       }
     }
   }])
+
+  depends_on = [
+    aws_secretsmanager_secret_version.auth0_client,
+    aws_secretsmanager_secret_version.auth0_management,
+  ]
 }
 
 resource "aws_ecs_service" "identity" {
   name            = "identity-api"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.identity.arn
-  desired_count   = 1
+  desired_count   = var.ecs_desired_count
   launch_type     = "FARGATE"
 
   health_check_grace_period_seconds = 120

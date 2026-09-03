@@ -70,6 +70,14 @@ output "identity_sql_secret_arn" {
   value = aws_secretsmanager_secret.identity_sql.arn
 }
 
+output "auth0_client_secret_arn" {
+  value = aws_secretsmanager_secret.auth0_client.arn
+}
+
+output "auth0_management_secret_arn" {
+  value = aws_secretsmanager_secret.auth0_management.arn
+}
+
 output "ui_bucket_name" {
   value = aws_s3_bucket.ui.id
 }

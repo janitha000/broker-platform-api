@@ -51,3 +51,23 @@ resource "aws_secretsmanager_secret_version" "jwt" {
   secret_id     = aws_secretsmanager_secret.jwt.id
   secret_string = var.jwt_signing_key
 }
+
+resource "aws_secretsmanager_secret" "auth0_client" {
+  name                    = "identity/dev/auth0-bff"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "auth0_client" {
+  secret_id     = aws_secretsmanager_secret.auth0_client.id
+  secret_string = var.auth0_client_secret
+}
+
+resource "aws_secretsmanager_secret" "auth0_management" {
+  name                    = "identity/dev/auth0-mgmt"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "auth0_management" {
+  secret_id     = aws_secretsmanager_secret.auth0_management.id
+  secret_string = var.auth0_management_client_secret
+}
