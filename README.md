@@ -38,7 +38,7 @@ infra/origination/             # Terraform for origination-dev
 
 Rules: Domain has no Infrastructure references. Api wires Application + Infrastructure. Connection string name is **`Origination`**.
 
-Auth: Identity issues a JWT (`POST /auth/register` or `/auth/login`). Origination `/cases` requires `Authorization: Bearer`. `/health` is anonymous. Same `Jwt` Key/Issuer/Audience in both APIs. JSON uses string enums.
+Auth: Auth0 Universal Login via Identity as a BFF. Identity sets httpOnly `broker.access` (HMAC JWT). Origination reads that cookie (`tenant_id` / broker id). `/health` is anonymous. Same `Jwt` Key/Issuer/Audience in Identity and Origination. JSON uses string enums. Concepts and flow diagrams: [AUTH.md](../AUTH.md).
 
 ## API
 
