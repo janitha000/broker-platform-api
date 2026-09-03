@@ -1,3 +1,9 @@
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Notification.Domain.Inbox;
+
+namespace Notification.Infrastructure.Persistence;
+
 public sealed class Inbox : IInbox
 {
     private readonly NotificationDbContext _context;

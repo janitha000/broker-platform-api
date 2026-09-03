@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Notification.Domain.Inbox;
 using Notification.Domain.Notifications;
 using NotificationEntity = Notification.Domain.Notifications.Notification;
 

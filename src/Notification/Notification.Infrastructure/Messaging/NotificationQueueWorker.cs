@@ -7,7 +7,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Notification.Application.Notifications.SendNotification;
-using Notification.Application.Notifications.SendNotification;
 using Notification.Domain.Inbox;
 
 namespace Notification.Infrastructure.Messaging;
@@ -126,7 +125,7 @@ public sealed class NotificationQueueWorker : BackgroundService
         await inbox.TryAdd(new InboxMessage
         {
             Id = Guid.NewGuid(),
-            Type = envelope.DetailType ?? "CaseFactFindCompleted",
+            Type = envelope?.DetailType ?? "CaseFactFindCompleted",
             Payload = payload,
             IdempotencyKey = detail.IdempotencyKey,
             Status = InboxStatus.Received,

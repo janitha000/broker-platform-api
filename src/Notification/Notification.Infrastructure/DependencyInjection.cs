@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Notification.Application.Abstractions;
+using Notification.Domain.Inbox;
 using Notification.Domain.Notifications;
 using Notification.Infrastructure.Email;
 using Notification.Infrastructure.Messaging;
@@ -20,6 +21,7 @@ public static class DependencyInjection
             options.UseSqlServer(configuration.GetConnectionString("Notification")));
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<INotificationTemplateRepository, NotificationTemplateRepository>();
+        services.AddScoped<IInbox, Inbox>();
 
         var provider = configuration["Email:Provider"] ?? "Mock";
         if (string.Equals(provider, "Ses", StringComparison.OrdinalIgnoreCase))
@@ -29,6 +31,7 @@ public static class DependencyInjection
 
         services.Configure<SqsWorkerOptions>(configuration.GetSection(SqsWorkerOptions.SectionName));
         services.AddHostedService<NotificationQueueWorker>();
+        services.AddHostedService<InboxDispatcher>();
 
         return services;
     }
