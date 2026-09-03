@@ -1,4 +1,5 @@
 using Identity.Application.Abstractions;
+using Identity.Application.Tenants.CompleteAuth0Login;
 using Identity.Application.Tenants.Login;
 using Identity.Application.Tenants.RegisterTenant;
 using Identity.Domain.Tenants;
@@ -113,6 +114,33 @@ public sealed class AuthHandlerTests
 
         var login = await new LoginHandler(users, new FakePasswordHasher(), new FakeTokenIssuer())
             .Handle(new LoginCommand("a@b.com", "other"));
+
+        Assert.Null(login);
+    }
+
+    [Fact]
+    public async Task CompleteAuth0Login_KnownEmail_ReturnsSameBrokerAndTenant()
+    {
+        var users = new InMemoryBrokerUserRepository();
+        var registered = await RegisterHandler(users).Handle(RegisterCommand());
+
+        var login = await new CompleteAuth0LoginHandler(users, new FakeTokenIssuer())
+            .Handle(new CompleteAuth0LoginCommand("  A@B.COM  ", "auth0|1"));
+
+        Assert.NotNull(login);
+        Assert.Equal(registered.Result!.TenantId, login!.TenantId);
+        Assert.Equal(registered.Result.BrokerId, login.BrokerId);
+        Assert.Equal("a@b.com", login.Email);
+        Assert.Equal(registered.Result.AccessToken, login.AccessToken);
+    }
+
+    [Fact]
+    public async Task CompleteAuth0Login_UnknownEmail_ReturnsNull()
+    {
+        var login = await new CompleteAuth0LoginHandler(
+                new InMemoryBrokerUserRepository(),
+                new FakeTokenIssuer())
+            .Handle(new CompleteAuth0LoginCommand("missing@x.com", "auth0|1"));
 
         Assert.Null(login);
     }

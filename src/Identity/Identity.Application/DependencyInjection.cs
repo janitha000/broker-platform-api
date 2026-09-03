@@ -1,3 +1,4 @@
+using Identity.Application.Tenants.CompleteAuth0Login;
 using Identity.Application.Tenants.Login;
 using Identity.Application.Tenants.RegisterTenant;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +11,7 @@ public static class DependencyInjection
     {
         services.AddScoped<RegisterTenantHandler>();
         services.AddScoped<LoginHandler>();
+        services.AddScoped<CompleteAuth0LoginHandler>();
         return services;
     }
 }

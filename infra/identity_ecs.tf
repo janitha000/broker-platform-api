@@ -61,6 +61,10 @@ resource "aws_ecs_task_definition" "identity" {
         name  = "Auth0__ManagementClientId"
         value = "KqScOfMotsI5olraxTZdcP4Z3cEsvnsB"
       },
+      {
+        name  = "Auth0__AppBaseUrl"
+        value = "https://d9oy49gmln888.cloudfront.net"
+      },
     ]
     secrets = [
       {
