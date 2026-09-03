@@ -39,6 +39,14 @@ resource "aws_ecs_task_definition" "payment" {
       {
         name  = "ASPNETCORE_ENVIRONMENT"
         value = "Production"
+      },
+      {
+        name  = "Auth0__Domain"
+        value = "dev-ggsd0s-z.us.auth0.com"
+      },
+      {
+        name  = "Auth0__Audience"
+        value = "https://payment.broker-platform.com"
       }
     ]
     logConfiguration = {

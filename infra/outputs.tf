@@ -78,6 +78,10 @@ output "auth0_management_secret_arn" {
   value = aws_secretsmanager_secret.auth0_management.arn
 }
 
+output "auth0_payment_secret_arn" {
+  value = aws_secretsmanager_secret.auth0_payment.arn
+}
+
 output "ui_bucket_name" {
   value = aws_s3_bucket.ui.id
 }

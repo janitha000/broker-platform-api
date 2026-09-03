@@ -1,8 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Payment.Api.Auth;
 using Payment.Application.Charges.CreateCharge;
 
 namespace Payment.Api.Charges;
 
+[Authorize(Policy = PaymentAuth.ChargePolicy)]
 [ApiController]
 [Route("payments")]
 public sealed class ChargesController : ControllerBase

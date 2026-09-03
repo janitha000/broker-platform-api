@@ -65,6 +65,14 @@ resource "aws_ecs_task_definition" "identity" {
         name  = "Auth0__AppBaseUrl"
         value = "https://d9oy49gmln888.cloudfront.net"
       },
+      {
+        name  = "Auth0__PaymentAudience"
+        value = "https://payment.broker-platform.com"
+      },
+      {
+        name  = "Auth0__PaymentClientId"
+        value = "j1It4SAqOep8m3tf0Pd5k10wqn77uRgo"
+      },
     ]
     secrets = [
       {
@@ -82,6 +90,10 @@ resource "aws_ecs_task_definition" "identity" {
       {
         name      = "Auth0__ManagementClientSecret"
         valueFrom = aws_secretsmanager_secret.auth0_management.arn
+      },
+      {
+        name      = "Auth0__PaymentClientSecret"
+        valueFrom = aws_secretsmanager_secret.auth0_payment.arn
       }
     ]
     logConfiguration = {
@@ -97,6 +109,7 @@ resource "aws_ecs_task_definition" "identity" {
   depends_on = [
     aws_secretsmanager_secret_version.auth0_client,
     aws_secretsmanager_secret_version.auth0_management,
+    aws_secretsmanager_secret_version.auth0_payment,
   ]
 }
 

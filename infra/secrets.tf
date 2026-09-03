@@ -71,3 +71,13 @@ resource "aws_secretsmanager_secret_version" "auth0_management" {
   secret_id     = aws_secretsmanager_secret.auth0_management.id
   secret_string = var.auth0_management_client_secret
 }
+
+resource "aws_secretsmanager_secret" "auth0_payment" {
+  name                    = "identity/dev/auth0-payment"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "auth0_payment" {
+  secret_id     = aws_secretsmanager_secret.auth0_payment.id
+  secret_string = var.auth0_payment_client_secret
+}

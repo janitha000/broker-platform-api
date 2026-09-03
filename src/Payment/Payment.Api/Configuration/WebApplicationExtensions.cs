@@ -14,6 +14,8 @@ public static class WebApplicationExtensions
         if (corsOrigins.Length > 0)
             app.UseCors();
 
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.MapControllers();
         return app;
     }

@@ -34,6 +34,7 @@ resource "aws_iam_role_policy" "execution_secret" {
         aws_secretsmanager_secret.jwt.arn,
         aws_secretsmanager_secret.auth0_client.arn,
         aws_secretsmanager_secret.auth0_management.arn,
+        aws_secretsmanager_secret.auth0_payment.arn,
       ]
     }]
   })

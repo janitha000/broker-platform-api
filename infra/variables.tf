@@ -32,6 +32,12 @@ variable "auth0_management_client_secret" {
   description = "Auth0 M2M (Broker Identity Management) client secret. Set in terraform.tfvars."
 }
 
+variable "auth0_payment_client_secret" {
+  type        = string
+  sensitive   = true
+  description = "Auth0 M2M (Identity Service → Payment API) client secret. Set in terraform.tfvars."
+}
+
 variable "my_ip" {
   type        = string
   description = "Your public IP with /32, for one-off EF migrate. Empty = no extra 1433 rule."
