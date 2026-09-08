@@ -48,9 +48,12 @@ public sealed class CreateChargeHandler
     private static CreateChargeOutcome ToOutcome(Charge charge)
     {
         var result = new CreateChargeResult(charge.Id, charge.Status);
-        var kind = charge.Status == ChargeStatus.Declined
-            ? CreateChargeKind.Declined
-            : CreateChargeKind.Succeeded;
+        var kind = charge.Status switch
+        {
+            ChargeStatus.Declined => CreateChargeKind.Declined,
+            ChargeStatus.Refunded => CreateChargeKind.IdempotencyConflict,
+            _ => CreateChargeKind.Succeeded,
+        };
         return new CreateChargeOutcome(kind, result);
     }
 

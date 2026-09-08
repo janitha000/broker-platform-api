@@ -2,6 +2,7 @@ using Identity.Application.Abstractions;
 using Identity.Application.Tenants.CompleteAuth0Login;
 using Identity.Application.Tenants.Login;
 using Identity.Application.Tenants.RegisterTenant;
+using Identity.Domain.Registration;
 using Identity.Domain.Tenants;
 
 namespace Identity.Application.Tests.Tenants;
@@ -21,10 +22,12 @@ public sealed class AuthHandlerTests
         IBrokerUserRepository? users = null,
         IPaymentGateway? payment = null,
         ITenantRepository? tenants = null,
-        IAuth0UserDirectory? auth0 = null) =>
+        IAuth0UserDirectory? auth0 = null,
+        IRegistrationSagaRepository? sagas = null) =>
         new(
             tenants ?? new InMemoryTenantRepository(),
             users ?? new InMemoryBrokerUserRepository(),
+            sagas ?? new InMemoryRegistrationSagaRepository(),
             new FakePasswordHasher(),
             new FakeTokenIssuer(),
             payment ?? new StubPaymentGateway(PaymentChargeStatus.Succeeded),
@@ -73,9 +76,13 @@ public sealed class AuthHandlerTests
     public async Task Register_Auth0Unavailable_DoesNotReturnToken()
     {
         var users = new InMemoryBrokerUserRepository();
+        var payment = new CountingPaymentGateway(PaymentChargeStatus.Succeeded);
+        var sagas = new InMemoryRegistrationSagaRepository();
         var outcome = await RegisterHandler(
                 users,
-                auth0: new StubAuth0UserDirectory(Auth0ProvisionKind.Failed, null))
+                payment,
+                auth0: new StubAuth0UserDirectory(Auth0ProvisionKind.Failed, null),
+                sagas: sagas)
             .Handle(RegisterCommand());
 
         Assert.Equal(RegisterTenantKind.IdentityProviderUnavailable, outcome.Kind);
@@ -83,6 +90,9 @@ public sealed class AuthHandlerTests
         var stored = await users.GetByEmail("a@b.com");
         Assert.NotNull(stored);
         Assert.Null(stored!.Auth0UserId);
+        Assert.Equal(1, payment.RefundCalls);
+        var saga = await sagas.GetByIdempotencyKey("key-1");
+        Assert.Equal(RegistrationSagaStatus.Compensated, saga!.Status);
     }
 
     [Fact]
@@ -93,7 +103,8 @@ public sealed class AuthHandlerTests
         var auth0 = new CountingAuth0UserDirectory();
         auth0.Results.Enqueue(new Auth0ProvisionResult(Auth0ProvisionKind.Failed, null));
         auth0.Results.Enqueue(new Auth0ProvisionResult(Auth0ProvisionKind.Succeeded, "auth0|retry"));
-        var handler = RegisterHandler(users, payment, auth0: auth0);
+        var sagas = new InMemoryRegistrationSagaRepository();
+        var handler = RegisterHandler(users, payment, auth0: auth0, sagas: sagas);
         var command = RegisterCommand();
 
         var first = await handler.Handle(command);
@@ -102,21 +113,30 @@ public sealed class AuthHandlerTests
         Assert.Equal(RegisterTenantKind.IdentityProviderUnavailable, first.Kind);
         Assert.Equal(RegisterTenantKind.Succeeded, second.Kind);
         Assert.Equal(1, payment.Calls);
+        Assert.Equal(1, payment.RefundCalls);
         Assert.Equal(2, auth0.Calls);
         Assert.Equal("auth0|retry", (await users.GetByEmail("a@b.com"))!.Auth0UserId);
+        Assert.Equal(RegistrationSagaStatus.Completed, (await sagas.GetByIdempotencyKey("key-1"))!.Status);
     }
 
     [Fact]
     public async Task Register_DeclinedCard_DoesNotCreateUser()
     {
         var users = new InMemoryBrokerUserRepository();
+        var sagas = new InMemoryRegistrationSagaRepository();
         var outcome = await RegisterHandler(
                 users,
-                new StubPaymentGateway(PaymentChargeStatus.Declined))
+                new StubPaymentGateway(PaymentChargeStatus.Declined),
+                sagas: sagas)
             .Handle(RegisterCommand());
 
         Assert.Equal(RegisterTenantKind.PaymentDeclined, outcome.Kind);
         Assert.Null(await users.GetByEmail("a@b.com"));
+        Assert.Equal(RegistrationSagaStatus.Failed, (await sagas.GetByIdempotencyKey("key-1"))!.Status);
+
+        var retry = await RegisterHandler(users, new StubPaymentGateway(PaymentChargeStatus.Declined), sagas: sagas)
+            .Handle(RegisterCommand());
+        Assert.Equal(RegisterTenantKind.PaymentDeclined, retry.Kind);
     }
 
     [Fact]
@@ -234,6 +254,8 @@ file sealed class StubPaymentGateway(PaymentChargeStatus status) : IPaymentGatew
 file sealed class CountingPaymentGateway(PaymentChargeStatus status) : IPaymentGateway
 {
     public int Calls { get; private set; }
+    public int RefundCalls { get; private set; }
+    private readonly Guid _chargeId = Guid.NewGuid();
 
     public Task<PaymentChargeResult> Charge(
         string email,
@@ -244,14 +266,17 @@ file sealed class CountingPaymentGateway(PaymentChargeStatus status) : IPaymentG
         Calls++;
         return Task.FromResult(new PaymentChargeResult(
             status,
-            status == PaymentChargeStatus.Succeeded ? Guid.NewGuid() : null));
+            status == PaymentChargeStatus.Succeeded ? _chargeId : null));
     }
 
     public Task<PaymentRefundStatus> Refund(
         Guid chargeId,
         string idempotencyKey,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult(PaymentRefundStatus.Succeeded);
+        CancellationToken cancellationToken = default)
+    {
+        RefundCalls++;
+        return Task.FromResult(PaymentRefundStatus.Succeeded);
+    }
 }
 
 file sealed class StubAuth0UserDirectory(Auth0ProvisionKind kind, string? userId) : IAuth0UserDirectory
@@ -294,6 +319,36 @@ file sealed class FakeTokenIssuer : ITokenIssuer
 {
     public string Issue(Guid brokerId, Guid tenantId, string email) =>
         $"{brokerId}|{tenantId}|{email}";
+}
+
+file sealed class InMemoryRegistrationSagaRepository : IRegistrationSagaRepository
+{
+    private readonly Dictionary<string, RegistrationSaga> _byKey = new(StringComparer.Ordinal);
+
+    public Task<RegistrationSaga?> GetByIdempotencyKey(string key, CancellationToken ct = default)
+    {
+        _byKey.TryGetValue(key, out var saga);
+        return Task.FromResult(saga);
+    }
+
+    public Task<RegistrationSaga> Add(RegistrationSaga saga, CancellationToken ct = default)
+    {
+        _byKey[saga.IdempotencyKey] = saga;
+        return Task.FromResult(saga);
+    }
+
+    public Task Update(RegistrationSaga saga, CancellationToken ct = default)
+    {
+        saga.UpdatedAt = DateTime.UtcNow;
+        _byKey[saga.IdempotencyKey] = saga;
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<RegistrationSaga>> GetIncomplete(
+        DateTime olderThan,
+        int take,
+        CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<RegistrationSaga>>([]);
 }
 
 file sealed class InMemoryTenantRepository : ITenantRepository

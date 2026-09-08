@@ -1,5 +1,6 @@
 using Payment.Application.Abstractions;
 using Payment.Application.Charges.CreateCharge;
+using Payment.Application.Charges.RefundCharge;
 using Payment.Domain.Charges;
 
 namespace Payment.Application.Tests.Charges;
@@ -73,6 +74,19 @@ public sealed class CreateChargeHandlerTests
         var second = await handler.Handle(Command(number: "4242 4242 4242 4242"));
 
         Assert.Equal(CreateChargeKind.Succeeded, second.Kind);
+    }
+
+    [Fact]
+    public async Task Handle_SameKeyAfterRefund_IsConflict()
+    {
+        var repo = new InMemoryChargeRepository();
+        var created = await new CreateChargeHandler(repo, new StubCardGateway(true)).Handle(Command());
+        await new RefundChargeHandler(repo).Handle(
+            new RefundChargeCommand(created.Charge!.ChargeId, "refund-1"));
+
+        var replay = await new CreateChargeHandler(repo, new StubCardGateway(true)).Handle(Command());
+
+        Assert.Equal(CreateChargeKind.IdempotencyConflict, replay.Kind);
     }
 }
 

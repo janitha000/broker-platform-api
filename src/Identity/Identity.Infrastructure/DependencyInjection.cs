@@ -1,4 +1,5 @@
 using Identity.Application.Abstractions;
+using Identity.Domain.Registration;
 using Identity.Domain.Tenants;
 using Identity.Infrastructure.Auth;
 using Identity.Infrastructure.Payments;
@@ -24,6 +25,8 @@ public static class DependencyInjection
         services.AddSingleton<Auth0PaymentTokenCache>();
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IBrokerUserRepository, BrokerUserRepository>();
+        services.AddScoped<IRegistrationSagaRepository, RegistrationSagaRepository>();
+
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("Identity")));
         services.AddHttpClient<IPaymentGateway, HttpPaymentGateway>((sp, client) =>
@@ -49,6 +52,7 @@ public static class DependencyInjection
             client.BaseAddress = new Uri($"https://{auth0.Domain}/");
             client.Timeout = TimeSpan.FromSeconds(15);
         });
+
         return services;
     }
 }
