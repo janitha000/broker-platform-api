@@ -103,9 +103,21 @@ file sealed class InMemoryChargeRepository : IChargeRepository
         return Task.FromResult(charge);
     }
 
+    public Task<Charge?> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        var charge = _byKey.Values.FirstOrDefault(c => c.Id == id);
+        return Task.FromResult(charge);
+    }
+
     public Task<Charge> Add(Charge charge, CancellationToken cancellationToken = default)
     {
         _byKey.Add(charge.IdempotencyKey, charge);
         return Task.FromResult(charge);
+    }
+
+    public Task Update(Charge charge, CancellationToken cancellationToken = default)
+    {
+        _byKey[charge.IdempotencyKey] = charge;
+        return Task.CompletedTask;
     }
 }

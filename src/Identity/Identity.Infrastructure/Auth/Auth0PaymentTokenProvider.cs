@@ -6,6 +6,7 @@ namespace Identity.Infrastructure.Auth;
 public sealed class Auth0PaymentTokenProvider
 {
     public const string ChargeScope = "payments:charge";
+    public const string RefundScope = "payments:refund";
 
     private readonly HttpClient _http;
     private readonly Auth0Options _options;
@@ -28,6 +29,6 @@ public sealed class Auth0PaymentTokenProvider
             _options.PaymentClientId,
             _options.PaymentClientSecret,
             _options.PaymentAudience,
-            ChargeScope,
+            $"{ChargeScope} {RefundScope}",
             cancellationToken);
 }

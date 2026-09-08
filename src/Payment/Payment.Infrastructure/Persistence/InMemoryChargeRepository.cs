@@ -15,10 +15,22 @@ public sealed class InMemoryChargeRepository : IChargeRepository
         return Task.FromResult(charge);
     }
 
+    public Task<Charge?> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        var charge = _byKey.Values.FirstOrDefault(c => c.Id == id);
+        return Task.FromResult(charge);
+    }
+
     public Task<Charge> Add(Charge charge, CancellationToken cancellationToken = default)
     {
         if (!_byKey.TryAdd(charge.IdempotencyKey, charge))
             throw new InvalidOperationException("Idempotency key already stored.");
         return Task.FromResult(charge);
+    }
+
+    public Task Update(Charge charge, CancellationToken cancellationToken = default)
+    {
+        _byKey[charge.IdempotencyKey] = charge;
+        return Task.CompletedTask;
     }
 }

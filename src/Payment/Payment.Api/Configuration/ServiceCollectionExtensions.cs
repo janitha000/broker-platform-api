@@ -45,6 +45,9 @@ public static class ServiceCollectionExtensions
             options.AddPolicy(
                 PaymentAuth.ChargePolicy,
                 policy => policy.RequireAssertion(ctx => PaymentAuth.HasChargePermission(ctx.User)));
+            options.AddPolicy(
+                PaymentAuth.RefundPolicy,
+                policy => policy.RequireAssertion(ctx => PaymentAuth.HasRefundPermission(ctx.User)));
         });
         return services;
     }

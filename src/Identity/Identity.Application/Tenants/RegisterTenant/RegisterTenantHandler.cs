@@ -52,11 +52,11 @@ public sealed class RegisterTenantHandler
             command.IdempotencyKey.Trim(),
             cancellationToken);
 
-        if (payment == PaymentChargeStatus.Declined)
+        if (payment.Status == PaymentChargeStatus.Declined)
             return new RegisterTenantOutcome(RegisterTenantKind.PaymentDeclined, null);
-        if (payment == PaymentChargeStatus.Conflict)
+        if (payment.Status == PaymentChargeStatus.Conflict)
             return new RegisterTenantOutcome(RegisterTenantKind.PaymentConflict, null);
-        if (payment != PaymentChargeStatus.Succeeded)
+        if (payment.Status != PaymentChargeStatus.Succeeded || payment.ChargeId is null)
             return new RegisterTenantOutcome(RegisterTenantKind.PaymentUnavailable, null);
 
         var tenant = new Tenant

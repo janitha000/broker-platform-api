@@ -215,27 +215,43 @@ public sealed class AuthHandlerTests
 
 file sealed class StubPaymentGateway(PaymentChargeStatus status) : IPaymentGateway
 {
-    public Task<PaymentChargeStatus> Charge(
+    public Task<PaymentChargeResult> Charge(
         string email,
         PaymentCard card,
         string idempotencyKey,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult(status);
+        Task.FromResult(new PaymentChargeResult(
+            status,
+            status == PaymentChargeStatus.Succeeded ? Guid.NewGuid() : null));
+
+    public Task<PaymentRefundStatus> Refund(
+        Guid chargeId,
+        string idempotencyKey,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(PaymentRefundStatus.Succeeded);
 }
 
 file sealed class CountingPaymentGateway(PaymentChargeStatus status) : IPaymentGateway
 {
     public int Calls { get; private set; }
 
-    public Task<PaymentChargeStatus> Charge(
+    public Task<PaymentChargeResult> Charge(
         string email,
         PaymentCard card,
         string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         Calls++;
-        return Task.FromResult(status);
+        return Task.FromResult(new PaymentChargeResult(
+            status,
+            status == PaymentChargeStatus.Succeeded ? Guid.NewGuid() : null));
     }
+
+    public Task<PaymentRefundStatus> Refund(
+        Guid chargeId,
+        string idempotencyKey,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(PaymentRefundStatus.Succeeded);
 }
 
 file sealed class StubAuth0UserDirectory(Auth0ProvisionKind kind, string? userId) : IAuth0UserDirectory
