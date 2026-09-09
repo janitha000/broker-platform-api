@@ -13,7 +13,10 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentBroker, JwtCurrentBroker>();
+        services.AddScoped<JwtCurrentBroker>();
+        services.AddScoped<ICurrentBroker>(sp => sp.GetRequiredService<JwtCurrentBroker>());
+        services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<JwtCurrentBroker>());
+
         services.AddBrokerJwtAuthentication(configuration);
         services.AddAuthorization();
         services.AddControllers()

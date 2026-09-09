@@ -39,5 +39,7 @@ public sealed class CaseConfiguration : IEntityTypeConfiguration<Case>
 
         builder.Property(c => c.CreatedAt)
             .IsRequired();
+
+        builder.HasIndex(c => c.TenantId);
     }
 }

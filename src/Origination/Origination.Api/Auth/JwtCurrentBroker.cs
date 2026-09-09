@@ -4,7 +4,7 @@ using Origination.Application.Abstractions;
 
 namespace Origination.Api.Auth;
 
-public sealed class JwtCurrentBroker : ICurrentBroker
+public sealed class JwtCurrentBroker : ICurrentBroker, ITenantContext
 {
     public const string TenantIdClaimType = "tenant_id";
 
@@ -18,6 +18,17 @@ public sealed class JwtCurrentBroker : ICurrentBroker
     public Guid BrokerId => ParseRequired(ClaimTypes.NameIdentifier, JwtRegisteredClaimNames.Sub);
 
     public Guid TenantId => ParseRequired(TenantIdClaimType);
+
+    Guid? ITenantContext.TenantId
+    {
+        get
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            if (user is null) return null;
+            var value = user.FindFirst(TenantIdClaimType)?.Value;
+            return Guid.TryParse(value, out var id) ? id : null;
+        }
+    }
 
     private Guid ParseRequired(params string[] claimTypes)
     {
