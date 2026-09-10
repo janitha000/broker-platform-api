@@ -7,4 +7,6 @@ public sealed record SendNotificationCommand(
     Dictionary<string, string>? Data,
     string Source,
     string IdempotencyKey,
-    string? CorrelationId);
+    string? CorrelationId,
+    Guid? TenantId = null,
+    Guid? CaseId = null);

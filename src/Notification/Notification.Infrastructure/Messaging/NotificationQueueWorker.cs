@@ -117,7 +117,9 @@ public sealed class NotificationQueueWorker : BackgroundService
             detail.Data,
             "origination",
             detail.IdempotencyKey,
-            detail.CorrelationId));
+            detail.CorrelationId,
+            detail.TenantId,
+            detail.CaseId));
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inbox = scope.ServiceProvider.GetRequiredService<IInbox>();

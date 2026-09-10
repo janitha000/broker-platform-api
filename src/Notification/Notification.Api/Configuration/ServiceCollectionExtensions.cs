@@ -1,3 +1,7 @@
+using Broker.Hosting;
+using Notification.Api.Realtime;
+using Notification.Application.Abstractions;
+
 namespace Notification.Api.Configuration;
 
 public static class ServiceCollectionExtensions
@@ -10,6 +14,11 @@ public static class ServiceCollectionExtensions
         services.AddSwaggerGen();
         services.AddControllers();
         services.AddCorsFromConfiguration(configuration);
+        services.AddHttpContextAccessor();
+        services.AddBrokerJwtAuthentication(configuration);
+        services.AddAuthorization();
+        services.AddSignalR();
+        services.AddSingleton<IRealtimeNotifier, SignalRRealtimeNotifier>();
         return services;
     }
 
@@ -26,7 +35,8 @@ public static class ServiceCollectionExtensions
                 {
                     policy.WithOrigins(corsOrigins)
                         .AllowAnyHeader()
-                        .AllowAnyMethod();
+                        .AllowAnyMethod()
+                        .AllowCredentials();
                 });
             });
         }

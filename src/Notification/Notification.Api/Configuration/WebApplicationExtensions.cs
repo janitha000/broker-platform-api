@@ -1,3 +1,5 @@
+using Notification.Api.Realtime;
+
 namespace Notification.Api.Configuration;
 
 public static class WebApplicationExtensions
@@ -14,7 +16,11 @@ public static class WebApplicationExtensions
         if (corsOrigins.Length > 0)
             app.UseCors();
 
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.MapControllers();
+        app.MapHub<NotificationsHub>("/hubs/notifications");
+
         return app;
     }
 }

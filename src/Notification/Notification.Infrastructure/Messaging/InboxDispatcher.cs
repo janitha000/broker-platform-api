@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Notification.Application.Abstractions;
 using Notification.Application.Notifications.SendNotification;
+using Notification.Application.Realtime;
 using Notification.Domain.Inbox;
 using Notification.Infrastructure.Persistence;
 
@@ -74,6 +76,9 @@ public sealed class InboxDispatcher : BackgroundService
                 message.AttemptCount++;
                 message.LockedUntil = null;
 
+                if (outcome.Kind is SendNotificationKind.Sent)
+                    await TryPublishRealtime(scope.ServiceProvider, command, outcome, message.Id, cancellationToken);
+
                 if (outcome.Kind is SendNotificationKind.Sent or SendNotificationKind.IdempotencyConflict)
                 {
                     message.Status = InboxStatus.Processed;
@@ -107,6 +112,28 @@ public sealed class InboxDispatcher : BackgroundService
             }
 
             await db.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task TryPublishRealtime(
+        IServiceProvider services,
+        SendNotificationCommand command,
+        SendNotificationOutcome outcome,
+        Guid inboxId,
+        CancellationToken cancellationToken)
+    {
+        var payload = RealtimeDispatch.ForSent(command, outcome);
+        if (payload is null)
+            return;
+
+        try
+        {
+            var realtime = services.GetRequiredService<IRealtimeNotifier>();
+            await realtime.Publish(payload, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Realtime publish failed for inbox {Id}", inboxId);
         }
     }
 }
