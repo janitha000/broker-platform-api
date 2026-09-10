@@ -26,7 +26,7 @@ public sealed class CreateCaseHandler
             BrokerId = _currentBroker.BrokerId,
             TenantId = _currentBroker.TenantId,
             InquiryNotes = command.InquiryNotes ?? string.Empty,
-            Status = CaseStatus.Inquiry,
+            Status = CaseStatus.Enquiry,
             CreatedAt = DateTime.UtcNow,
         };
 

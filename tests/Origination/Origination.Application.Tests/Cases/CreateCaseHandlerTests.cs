@@ -9,7 +9,7 @@ namespace Origination.Application.Tests.Cases;
 public sealed class CreateCaseHandlerTests
 {
     [Fact]
-    public async Task Handle_NewCase_HasInquiryStatusAndTenant()
+    public async Task Handle_NewCase_HasEnquiryStatusAndTenant()
     {
         var repository = new InMemoryCaseRepository();
         var brokerId = Guid.NewGuid();
@@ -18,7 +18,7 @@ public sealed class CreateCaseHandlerTests
 
         var result = await handler.Handle(new CreateCaseCommand("First home inquiry"));
 
-        Assert.Equal(CaseStatus.Inquiry, result.Status);
+        Assert.Equal(CaseStatus.Enquiry, result.Status);
         Assert.NotEqual(Guid.Empty, result.CaseId);
 
         var stored = await repository.GetById(result.CaseId, tenantId);

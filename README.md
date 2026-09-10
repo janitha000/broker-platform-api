@@ -17,7 +17,7 @@ Only **Origination** is implemented. Later services (Identity, BrokerDirectory, 
 
 - **Case** — inquiry from a broker; core object until settlement.
 - **Fact-find** — income / expenses / assets / debts attached to a case.
-- Status path so far: `Inquiry` → `FactFindCompleted`. Recommendation and lodgement come later.
+- Status path: `Enquiry` → `FactFindCompleted` (fact-find form) → `Recommendation` → `Lodged` → `ConditionalApproval` → `FormalApproval` → `Settled`. `NotProceeded` is the lost/declined/NPW column.
 
 IDs only across future services (no shared SQL). Sync HTTP where the caller needs an answer now; events later.
 

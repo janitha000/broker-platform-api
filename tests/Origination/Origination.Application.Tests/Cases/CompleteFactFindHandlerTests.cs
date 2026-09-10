@@ -20,7 +20,7 @@ public sealed class CompleteFactFindHandlerTests
             Id = caseId,
             TenantId = tenantId,
             BrokerId = Guid.NewGuid(),
-            Status = CaseStatus.Inquiry,
+            Status = CaseStatus.Enquiry,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -66,7 +66,7 @@ public sealed class CompleteFactFindHandlerTests
             Id = caseId,
             TenantId = tenantId,
             BrokerId = Guid.NewGuid(),
-            Status = CaseStatus.Inquiry,
+            Status = CaseStatus.Enquiry,
             CreatedAt = DateTime.UtcNow
         });
 
