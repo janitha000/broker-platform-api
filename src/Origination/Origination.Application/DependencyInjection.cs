@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddScoped<CreateCaseHandler>();
         services.AddScoped<GetCaseHandler>();
         services.AddScoped<GetCasesHandler>();
+        services.AddScoped<GetCasesForBoardHandler>();
         services.AddScoped<CompleteFactFindHandler>();
         return services;
     }

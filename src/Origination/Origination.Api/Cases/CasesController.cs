@@ -16,17 +16,20 @@ public sealed class CasesController : ControllerBase
     private readonly GetCaseHandler _getCaseHandler;
     private readonly GetCasesHandler _getCasesHandler;
     private readonly CompleteFactFindHandler _completeFactFindHandler;
+    private readonly GetCasesForBoardHandler _getCasesForBoardHandler;
 
     public CasesController(
         CreateCaseHandler createCaseHandler,
         GetCaseHandler getCaseHandler,
         GetCasesHandler getCasesHandler,
-        CompleteFactFindHandler completeFactFindHandler)
+        CompleteFactFindHandler completeFactFindHandler,
+        GetCasesForBoardHandler getCasesForBoardHandler)
     {
         _createCaseHandler = createCaseHandler;
         _getCaseHandler = getCaseHandler;
         _getCasesHandler = getCasesHandler;
         _completeFactFindHandler = completeFactFindHandler;
+        _getCasesForBoardHandler = getCasesForBoardHandler;
     }
 
     [HttpPost]
@@ -59,6 +62,13 @@ public sealed class CasesController : ControllerBase
     public async Task<IActionResult> GetCases(CancellationToken cancellationToken = default)
     {
         var result = await _getCasesHandler.Handle(new GetCasesQuery(), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("board")]
+    public async Task<IActionResult> GetCasesForBoard(CancellationToken cancellationToken = default)
+    {
+        var result = await _getCasesForBoardHandler.Handle(new GetCasesForBoardQuery(), cancellationToken);
         return Ok(result);
     }
 }
