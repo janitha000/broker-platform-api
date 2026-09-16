@@ -59,6 +59,12 @@ public static class DependencyInjection
             client.BaseAddress = new Uri($"https://{auth0.Domain}/");
             client.Timeout = TimeSpan.FromSeconds(15);
         });
+        services.AddHttpClient<IAuth0UserTokenClient, HttpAuth0UserTokenClient>((sp, client) =>
+        {
+            var auth0 = sp.GetRequiredService<IOptions<Auth0Options>>().Value;
+            client.BaseAddress = new Uri($"https://{auth0.Domain}/");
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
 
         return services;
     }

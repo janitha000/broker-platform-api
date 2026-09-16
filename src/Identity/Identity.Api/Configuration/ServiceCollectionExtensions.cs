@@ -35,7 +35,8 @@ public static class ServiceCollectionExtensions
                 {
                     policy.WithOrigins(corsOrigins)
                         .AllowAnyHeader()
-                        .AllowAnyMethod();
+                        .AllowAnyMethod()
+                        .AllowCredentials();
                 });
             });
         }
@@ -87,6 +88,8 @@ public static class ServiceCollectionExtensions
                 options.Scope.Add("openid");
                 options.Scope.Add("profile");
                 options.Scope.Add("email");
+                if (useOrganizations)
+                    options.Scope.Add("offline_access");
                 options.CorrelationCookie.SameSite = SameSiteMode.Lax;
                 options.NonceCookie.SameSite = SameSiteMode.Lax;
                 options.Events = new OpenIdConnectEvents

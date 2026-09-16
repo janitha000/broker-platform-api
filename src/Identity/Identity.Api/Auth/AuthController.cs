@@ -22,19 +22,22 @@ public sealed class AuthController : ControllerBase
     private readonly CompleteAuth0LoginHandler _completeAuth0LoginHandler;
     private readonly Auth0Options _auth0;
     private readonly AuthOptions _auth;
+    private readonly IAuth0UserTokenClient _tokenClient;
 
     public AuthController(
         RegisterTenantHandler registerTenantHandler,
         LoginHandler loginHandler,
         CompleteAuth0LoginHandler completeAuth0LoginHandler,
         IOptions<Auth0Options> auth0,
-        IOptions<AuthOptions> auth)
+        IOptions<AuthOptions> auth,
+        IAuth0UserTokenClient tokenClient)
     {
         _registerTenantHandler = registerTenantHandler;
         _loginHandler = loginHandler;
         _completeAuth0LoginHandler = completeAuth0LoginHandler;
         _auth0 = auth0.Value;
         _auth = auth.Value;
+        _tokenClient = tokenClient;
     }
 
     [AllowAnonymous]
@@ -111,6 +114,7 @@ public sealed class AuthController : ControllerBase
             return Unauthorized();
 
         var accessToken = oidc.Properties?.GetTokenValue("access_token");
+        var refreshToken = oidc.Properties?.GetTokenValue("refresh_token");
 
         var email = oidc.Principal.FindFirst(JwtRegisteredClaimNames.Email)?.Value
             ?? oidc.Principal.FindFirst(ClaimTypes.Email)?.Value
@@ -134,7 +138,9 @@ public sealed class AuthController : ControllerBase
         {
             if (string.IsNullOrEmpty(accessToken))
                 return Unauthorized();
-            AppendAccessCookie(accessToken);
+            AppendAccessCookie(accessToken, AuthCookie.Auth0AccessLifetime);
+            if (!string.IsNullOrEmpty(refreshToken))
+                AppendRefreshCookie(refreshToken);
         }
         else
         {
@@ -147,9 +153,15 @@ public sealed class AuthController : ControllerBase
     [AllowAnonymous]
     [HttpGet("logout")]
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
-        Response.Cookies.Delete(AuthCookie.Name, AuthCookie.Delete(Request.IsHttps));
+        if (Request.Cookies.TryGetValue(AuthCookie.RefreshName, out var refresh)
+            && !string.IsNullOrWhiteSpace(refresh))
+        {
+            await _tokenClient.Revoke(refresh, cancellationToken);
+        }
+
+        DeleteSessionCookies();
         await HttpContext.SignOutAsync(Auth0Auth.CookieScheme);
 
         var returnTo = Uri.EscapeDataString(AppBaseUrl());
@@ -182,6 +194,35 @@ public sealed class AuthController : ControllerBase
         return Ok(ToUser(tenant, broker, email, role ?? string.Empty));
     }
 
+    [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
+    {
+        if (!_auth.UseAuth0Organizations)
+            return StatusCode(StatusCodes.Status410Gone);
+
+        if (!Request.Cookies.TryGetValue(AuthCookie.RefreshName, out var refreshToken)
+            || string.IsNullOrWhiteSpace(refreshToken))
+            return Unauthorized();
+
+        var tokens = await _tokenClient.Refresh(refreshToken, cancellationToken);
+        if (tokens is null)
+        {
+            DeleteSessionCookies();
+            return Unauthorized();
+        }
+
+        AppendAccessCookie(
+            tokens.AccessToken,
+            TimeSpan.FromSeconds(Math.Max(tokens.ExpiresInSeconds, 60)));
+
+        // Rotation: Auth0 may send a new refresh token. Always overwrite if present.
+        if (!string.IsNullOrEmpty(tokens.RefreshToken))
+            AppendRefreshCookie(tokens.RefreshToken);
+
+        return NoContent();
+    }
+
     private IActionResult CreatedWithCookie(RegisterTenantResult result)
     {
         if (!_auth.UseAuth0Organizations)
@@ -189,12 +230,26 @@ public sealed class AuthController : ControllerBase
         return Created(string.Empty, ToUser(result.TenantId, result.BrokerId, result.Email, result.Role));
     }
 
-    private void AppendAccessCookie(string accessToken)
+    private void AppendAccessCookie(string accessToken, TimeSpan? maxAge = null)
+    {
+        var options = AuthCookie.Create(Request.IsHttps);
+        if (maxAge is { } age)
+            options.MaxAge = age;
+        Response.Cookies.Append(AuthCookie.Name, accessToken, options);
+    }
+
+    private void DeleteSessionCookies()
+    {
+        Response.Cookies.Delete(AuthCookie.Name, AuthCookie.Delete(Request.IsHttps));
+        Response.Cookies.Delete(AuthCookie.RefreshName, AuthCookie.DeleteRefresh(Request.IsHttps));
+    }
+
+    private void AppendRefreshCookie(string refreshToken)
     {
         Response.Cookies.Append(
-            AuthCookie.Name,
-            accessToken,
-            AuthCookie.Create(Request.IsHttps));
+            AuthCookie.RefreshName,
+            refreshToken,
+            AuthCookie.CreateRefresh(Request.IsHttps));
     }
 
     private string AppBaseUrl() => _auth0.AppBaseUrl.TrimEnd('/');
