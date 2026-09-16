@@ -1,4 +1,5 @@
 using Origination.Application.Abstractions;
+using Origination.Application.Auth;
 using Origination.Application.Cases.CompleteFactFind;
 using Origination.Domain.Abstractions;
 using Origination.Domain.Cases;
@@ -26,10 +27,10 @@ public sealed class CompleteFactFindHandlerTests
 
         var handler = new CompleteFactFindHandler(
             repository,
-            new StubCurrentBroker(Guid.NewGuid(), tenantId),
+            new StubCurrentBroker(Guid.NewGuid(), tenantId, CasePermissions.FactFindAny),
             outbox,
             new InMemoryUnitOfWork());
-        var result = await handler.Handle(new CompleteFactFindCommand(
+        var outcome = await handler.Handle(new CompleteFactFindCommand(
             caseId,
             "Buy first home",
             120_000m,
@@ -37,8 +38,8 @@ public sealed class CompleteFactFindHandlerTests
             80_000m,
             15_000m));
 
-        Assert.NotNull(result);
-        Assert.Equal(CaseStatus.FactFindCompleted, result!.Status);
+        Assert.Equal(CompleteFactFindKind.Succeeded, outcome.Kind);
+        Assert.Equal(CaseStatus.FactFindCompleted, outcome.Result!.Status);
 
         var stored = await repository.GetById(caseId, tenantId);
         Assert.NotNull(stored!.FactFind);
@@ -72,7 +73,7 @@ public sealed class CompleteFactFindHandlerTests
 
         var handler = new CompleteFactFindHandler(
             repository,
-            new StubCurrentBroker(Guid.NewGuid(), tenantId),
+            new StubCurrentBroker(Guid.NewGuid(), tenantId, CasePermissions.FactFindAny),
             outbox,
             new InMemoryUnitOfWork());
         var command = new CompleteFactFindCommand(caseId, "Buy first home", 1m, 1m, 1m, 1m);
@@ -84,27 +85,87 @@ public sealed class CompleteFactFindHandlerTests
     }
 
     [Fact]
-    public async Task Handle_MissingCase_ReturnsNull()
+    public async Task Handle_MissingCase_ReturnsNotFound()
     {
         var handler = new CompleteFactFindHandler(
             new InMemoryFactFindCaseRepository(),
-            new StubCurrentBroker(Guid.NewGuid(), Guid.NewGuid()),
+            new StubCurrentBroker(Guid.NewGuid(), Guid.NewGuid(), CasePermissions.FactFindAny),
             new InMemoryOutbox(),
             new InMemoryUnitOfWork());
 
-        var result = await handler.Handle(new CompleteFactFindCommand(
+        var outcome = await handler.Handle(new CompleteFactFindCommand(
             Guid.NewGuid(),
             "x",
             1m, 1m, 1m, 1m));
 
-        Assert.Null(result);
+        Assert.Equal(CompleteFactFindKind.NotFound, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task Handle_Assistant_OwnCase_Succeeds()
+    {
+        var caseId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var assistantId = Guid.NewGuid();
+        var repository = new InMemoryFactFindCaseRepository();
+        await repository.Add(new Case
+        {
+            Id = caseId,
+            TenantId = tenantId,
+            BrokerId = assistantId,
+            Status = CaseStatus.Enquiry,
+            CreatedAt = DateTime.UtcNow,
+        });
+
+        var outcome = await new CompleteFactFindHandler(
+            repository,
+            new StubCurrentBroker(assistantId, tenantId, CasePermissions.FactFind),
+            new InMemoryOutbox(),
+            new InMemoryUnitOfWork())
+            .Handle(new CompleteFactFindCommand(caseId, "x", 1m, 1m, 1m, 1m));
+
+        Assert.Equal(CompleteFactFindKind.Succeeded, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task Handle_Assistant_OtherBrokerCase_Forbidden()
+    {
+        var caseId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var repository = new InMemoryFactFindCaseRepository();
+        await repository.Add(new Case
+        {
+            Id = caseId,
+            TenantId = tenantId,
+            BrokerId = Guid.NewGuid(),
+            Status = CaseStatus.Enquiry,
+            CreatedAt = DateTime.UtcNow,
+        });
+
+        var outcome = await new CompleteFactFindHandler(
+            repository,
+            new StubCurrentBroker(Guid.NewGuid(), tenantId, CasePermissions.FactFind),
+            new InMemoryOutbox(),
+            new InMemoryUnitOfWork())
+            .Handle(new CompleteFactFindCommand(caseId, "x", 1m, 1m, 1m, 1m));
+
+        Assert.Equal(CompleteFactFindKind.Forbidden, outcome.Kind);
+        var stored = await repository.GetById(caseId, tenantId);
+        Assert.Equal(CaseStatus.Enquiry, stored!.Status);
+        Assert.Null(stored.FactFind);
     }
 }
 
-file sealed class StubCurrentBroker(Guid brokerId, Guid tenantId) : ICurrentBroker
+file sealed class StubCurrentBroker(
+    Guid brokerId,
+    Guid tenantId,
+    params string[] permissions) : ICurrentBroker
 {
     public Guid BrokerId { get; } = brokerId;
     public Guid TenantId { get; } = tenantId;
+
+    public bool HasPermission(string permission) =>
+        permissions.Contains(permission);
 }
 
 file sealed class InMemoryUnitOfWork : IUnitOfWork

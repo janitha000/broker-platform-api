@@ -4,4 +4,5 @@ public sealed record RegisterTenantResult(
     Guid TenantId,
     Guid BrokerId,
     string Email,
-    string AccessToken);
+    string AccessToken,
+    string Role);

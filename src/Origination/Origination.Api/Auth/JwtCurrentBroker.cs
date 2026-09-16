@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Origination.Application.Abstractions;
+using Origination.Application.Auth;
 
 namespace Origination.Api.Auth;
 
@@ -43,5 +44,14 @@ public sealed class JwtCurrentBroker : ICurrentBroker, ITenantContext
         }
 
         throw new InvalidOperationException($"Missing broker claim ({string.Join(", ", claimTypes)}).");
+    }
+
+    public bool HasPermission(string permission)
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+        if (user is null || string.IsNullOrEmpty(permission))
+            return false;
+
+        return user.FindAll(CasePermissions.ClaimType).Any(c => c.Value == permission);
     }
 }

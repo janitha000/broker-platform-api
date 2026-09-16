@@ -5,6 +5,7 @@ using Identity.Application.Abstractions;
 using Identity.Application.Tenants.CompleteAuth0Login;
 using Identity.Application.Tenants.Login;
 using Identity.Application.Tenants.RegisterTenant;
+using Identity.Domain.Tenants;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -78,7 +79,7 @@ public sealed class AuthController : ControllerBase
             return Unauthorized();
 
         AppendAccessCookie(result.AccessToken);
-        return Ok(ToUser(result.TenantId, result.BrokerId, result.Email));
+        return Ok(ToUser(result.TenantId, result.BrokerId, result.Email, result.Role));
     }
 
     [AllowAnonymous]
@@ -145,18 +146,20 @@ public sealed class AuthController : ControllerBase
             ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
         var tenantId = User.FindFirst("tenant_id")?.Value;
         var email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+        var role = User.FindFirst(BrokerPermissions.RoleClaimType)?.Value;
         if (!Guid.TryParse(brokerId, out var broker)
             || !Guid.TryParse(tenantId, out var tenant)
-            || string.IsNullOrEmpty(email))
+            || string.IsNullOrEmpty(email)
+            || string.IsNullOrEmpty(role))
             return Unauthorized();
 
-        return Ok(ToUser(tenant, broker, email));
+        return Ok(ToUser(tenant, broker, email, role));
     }
 
     private IActionResult CreatedWithCookie(RegisterTenantResult result)
     {
         AppendAccessCookie(result.AccessToken);
-        return Created(string.Empty, ToUser(result.TenantId, result.BrokerId, result.Email));
+        return Created(string.Empty, ToUser(result.TenantId, result.BrokerId, result.Email, result.Role));
     }
 
     private void AppendAccessCookie(string accessToken)
@@ -178,6 +181,6 @@ public sealed class AuthController : ControllerBase
         return returnUrl;
     }
 
-    private static AuthUserResponse ToUser(Guid tenantId, Guid brokerId, string email) =>
-        new(tenantId, brokerId, email);
+    private static AuthUserResponse ToUser(Guid tenantId, Guid brokerId, string email, string role) =>
+        new(tenantId, brokerId, email, role);
 }

@@ -128,6 +128,7 @@ public sealed class RegisterTenantHandler
                     Email = saga.Email,
                     PasswordHash = _passwordHasher.Hash(command.Password),
                     CreatedAt = DateTime.UtcNow,
+                    Role = BrokerRole.Principal,
                 }, cancellationToken);
 
                 saga.TenantId = tenant.Id;
@@ -179,10 +180,10 @@ public sealed class RegisterTenantHandler
             await _sagas.Update(saga, cancellationToken);
         }
 
-        var accessToken = _tokenIssuer.Issue(user.Id, user.TenantId, user.Email);
+        var accessToken = _tokenIssuer.Issue(user.Id, user.TenantId, user.Email, user.Role);
         return new RegisterTenantOutcome(
             RegisterTenantKind.Succeeded,
-            new RegisterTenantResult(user.TenantId, user.Id, user.Email, accessToken));
+            new RegisterTenantResult(user.TenantId, user.Id, user.Email, accessToken, user.Role));
     }
 
     private async Task Compensate(
@@ -230,9 +231,9 @@ public sealed class RegisterTenantHandler
         CancellationToken cancellationToken)
     {
         var user = await _brokerUserRepository.GetById(saga.BrokerUserId!.Value, cancellationToken);
-        var token = _tokenIssuer.Issue(user!.Id, user.TenantId, user.Email);
+        var token = _tokenIssuer.Issue(user!.Id, user.TenantId, user.Email, user.Role);
         return new RegisterTenantOutcome(
             RegisterTenantKind.Succeeded,
-            new RegisterTenantResult(user.TenantId, user.Id, user.Email, token));
+            new RegisterTenantResult(user.TenantId, user.Id, user.Email, token, user.Role));
     }
 }

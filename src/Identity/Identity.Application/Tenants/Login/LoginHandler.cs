@@ -29,8 +29,8 @@ public sealed class LoginHandler
         if (!_passwordHasher.Verify(brokerUser.PasswordHash, command.Password))
             return null;
 
-        var accessToken = _tokenIssuer.Issue(brokerUser.Id, brokerUser.TenantId, brokerUser.Email);
+        var accessToken = _tokenIssuer.Issue(brokerUser.Id, brokerUser.TenantId, brokerUser.Email, brokerUser.Role);
 
-        return new LoginResult(brokerUser.TenantId, brokerUser.Id, brokerUser.Email, accessToken);
+        return new LoginResult(brokerUser.TenantId, brokerUser.Id, brokerUser.Email, accessToken, brokerUser.Role);
     }
 }

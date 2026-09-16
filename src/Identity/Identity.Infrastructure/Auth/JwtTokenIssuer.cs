@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Identity.Application.Abstractions;
+using Identity.Domain.Tenants;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -18,18 +19,22 @@ public sealed class JwtTokenIssuer : ITokenIssuer
         _options = options.Value;
     }
 
-    public string Issue(Guid brokerId, Guid tenantId, string email)
+    public string Issue(Guid brokerId, Guid tenantId, string email, string role)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, brokerId.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, brokerId.ToString()),
-            new Claim(TenantIdClaim, tenantId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, email),
+            new(JwtRegisteredClaimNames.Sub, brokerId.ToString()),
+            new(ClaimTypes.NameIdentifier, brokerId.ToString()),
+            new(TenantIdClaim, tenantId.ToString()),
+            new(JwtRegisteredClaimNames.Email, email),
+            new(BrokerPermissions.RoleClaimType, role),
         };
+
+        foreach (var permission in BrokerPermissions.ForRole(role))
+            claims.Add(new Claim(BrokerPermissions.ClaimType, permission));
 
         var token = new JwtSecurityToken(
             issuer: _options.Issuer,

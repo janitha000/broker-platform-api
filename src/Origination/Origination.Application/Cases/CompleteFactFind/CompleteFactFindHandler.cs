@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Origination.Application.Abstractions;
+using Origination.Application.Auth;
 using Origination.Domain.Abstractions;
 using Origination.Domain.Cases;
 using Origination.Domain.Outbox;
@@ -25,13 +26,19 @@ public sealed class CompleteFactFindHandler
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<CompleteFactFindResult?> Handle(
+    public async Task<CompleteFactFindOutcome> Handle(
         CompleteFactFindCommand command,
         CancellationToken cancellationToken = default)
     {
         var @case = await _caseRepository.GetById(command.CaseId, _currentBroker.TenantId, cancellationToken);
         if (@case is null)
-            return null;
+            return new CompleteFactFindOutcome(CompleteFactFindKind.NotFound, null);
+
+        var canAny = _currentBroker.HasPermission(CasePermissions.FactFindAny);
+        var canOwn = _currentBroker.HasPermission(CasePermissions.FactFind)
+            && @case.BrokerId == _currentBroker.BrokerId;
+        if (!canAny && !canOwn)
+            return new CompleteFactFindOutcome(CompleteFactFindKind.Forbidden, null);
 
         @case.FactFind = new FactFind
         {
@@ -73,6 +80,8 @@ public sealed class CompleteFactFindHandler
         }
 
         await _unitOfWork.SaveChanges(cancellationToken);
-        return new CompleteFactFindResult(@case.Id, @case.Status);
+        return new CompleteFactFindOutcome(
+            CompleteFactFindKind.Succeeded,
+            new CompleteFactFindResult(@case.Id, @case.Status));
     }
 }

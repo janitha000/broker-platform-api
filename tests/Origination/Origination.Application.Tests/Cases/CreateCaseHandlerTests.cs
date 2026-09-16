@@ -52,10 +52,16 @@ file sealed class InMemoryUnitOfWork : IUnitOfWork
     public Task SaveChanges(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 
-file sealed class StubCurrentBroker(Guid brokerId, Guid tenantId) : ICurrentBroker
+file sealed class StubCurrentBroker(
+    Guid brokerId,
+    Guid tenantId,
+    params string[] permissions) : ICurrentBroker
 {
     public Guid BrokerId { get; } = brokerId;
     public Guid TenantId { get; } = tenantId;
+
+    public bool HasPermission(string permission) =>
+        permissions.Contains(permission);
 }
 
 file sealed class InMemoryCaseRepository : ICaseRepository

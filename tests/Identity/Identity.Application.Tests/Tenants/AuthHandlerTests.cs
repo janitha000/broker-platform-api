@@ -48,13 +48,14 @@ public sealed class AuthHandlerTests
         Assert.Equal(RegisterTenantKind.Succeeded, outcome.Kind);
         var result = outcome.Result!;
         Assert.Equal("broker@example.com", result.Email);
-        Assert.Equal($"{result.BrokerId}|{result.TenantId}|broker@example.com", result.AccessToken);
+        Assert.Equal($"{result.BrokerId}|{result.TenantId}|broker@example.com|{BrokerRole.Principal}", result.AccessToken);
 
         var stored = await users.GetByEmail("broker@example.com");
         Assert.NotNull(stored);
         Assert.Equal(result.TenantId, stored!.TenantId);
         Assert.Equal("hash:secret", stored.PasswordHash);
         Assert.Equal("auth0|1", stored.Auth0UserId);
+        Assert.Equal(BrokerRole.Principal, stored.Role);
     }
 
     [Fact]
@@ -317,8 +318,8 @@ file sealed class FakePasswordHasher : IPasswordHasher
 
 file sealed class FakeTokenIssuer : ITokenIssuer
 {
-    public string Issue(Guid brokerId, Guid tenantId, string email) =>
-        $"{brokerId}|{tenantId}|{email}";
+    public string Issue(Guid brokerId, Guid tenantId, string email, string role) =>
+        $"{brokerId}|{tenantId}|{email}|{role}";
 }
 
 file sealed class InMemoryRegistrationSagaRepository : IRegistrationSagaRepository

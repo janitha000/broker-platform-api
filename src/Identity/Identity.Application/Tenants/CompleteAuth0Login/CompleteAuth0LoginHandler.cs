@@ -37,7 +37,7 @@ public sealed class CompleteAuth0LoginHandler
         if (user is null)
             return null;
 
-        var token = _tokenIssuer.Issue(user.Id, user.TenantId, user.Email);
-        return new LoginResult(user.TenantId, user.Id, user.Email, token);
+        var token = _tokenIssuer.Issue(user.Id, user.TenantId, user.Email, user.Role);
+        return new LoginResult(user.TenantId, user.Id, user.Email, token, user.Role);
     }
 }

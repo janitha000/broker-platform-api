@@ -10,4 +10,5 @@ public class BrokerUser
     public string PasswordHash { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public string? Auth0UserId { get; set; }
+    public string Role { get; set; } = BrokerRole.Principal;
 }

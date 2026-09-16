@@ -48,5 +48,9 @@ public sealed class BrokerUserConfiguration : IEntityTypeConfiguration<BrokerUse
             .WithMany()
             .HasForeignKey(u => u.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(u => u.Role)
+            .HasMaxLength(32)
+            .IsRequired();
     }
 }

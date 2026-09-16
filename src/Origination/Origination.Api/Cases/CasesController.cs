@@ -4,6 +4,7 @@ using Origination.Application.Cases.GetCases;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Origination.Application.Cases.CompleteFactFind;
+using Origination.Api.Auth;
 
 namespace Origination.Api.Cases;
 
@@ -32,6 +33,7 @@ public sealed class CasesController : ControllerBase
         _getCasesForBoardHandler = getCasesForBoardHandler;
     }
 
+    [Authorize(Policy = OriginationAuth.CreatePolicy)]
     [HttpPost]
     public async Task<IActionResult> CreateCase([FromBody] CreateCaseCommand command, CancellationToken cancellationToken = default)
     {
@@ -40,6 +42,7 @@ public sealed class CasesController : ControllerBase
 
     }
 
+    [Authorize(Policy = OriginationAuth.ReadPolicy)]
     [HttpGet("{caseId:guid}")]
     public async Task<IActionResult> Get(Guid caseId, CancellationToken cancellationToken = default)
     {
@@ -49,15 +52,21 @@ public sealed class CasesController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Policy = OriginationAuth.FactFindPolicy)]
     [HttpPut("{caseId:guid}/fact-find")]
     public async Task<IActionResult> CompleteFactFind(Guid caseId, [FromBody] CompleteFactFindCommand command, CancellationToken cancellationToken = default)
     {
-        var result = await _completeFactFindHandler.Handle(command with { CaseId = caseId }, cancellationToken);
-        if (result is null)
-            return NotFound();
-        return Ok(result);
+        var outcome = await _completeFactFindHandler.Handle(command with { CaseId = caseId }, cancellationToken);
+        return outcome.Kind switch
+        {
+            CompleteFactFindKind.Succeeded => Ok(outcome.Result),
+            CompleteFactFindKind.NotFound => NotFound(),
+            CompleteFactFindKind.Forbidden => Forbid(),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
     }
 
+    [Authorize(Policy = OriginationAuth.ReadPolicy)]
     [HttpGet]
     public async Task<IActionResult> GetCases(CancellationToken cancellationToken = default)
     {
@@ -65,6 +74,7 @@ public sealed class CasesController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Policy = OriginationAuth.ReadPolicy)]
     [HttpGet("board")]
     public async Task<IActionResult> GetCasesForBoard(CancellationToken cancellationToken = default)
     {
