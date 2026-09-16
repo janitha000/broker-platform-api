@@ -1,4 +1,5 @@
 using Broker.Hosting;
+using Broker.Hosting.Auth;
 using Identity.Api.Auth;
 using Identity.Application.Abstractions;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -13,7 +14,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
-        services.AddBrokerJwtAuthentication(configuration);
+        services.AddBrokerSessionAuthentication(configuration);
         services.AddAuth0Authentication(configuration);
         services.AddAuthorization();
         services.AddControllers();
@@ -46,7 +47,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<Auth0Options>(configuration.GetSection(Auth0Options.SectionName));
+        services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
         var auth0 = configuration.GetSection(Auth0Options.SectionName).Get<Auth0Options>()
             ?? throw new InvalidOperationException("Auth0 is not configured.");
         if (string.IsNullOrWhiteSpace(auth0.Domain)
@@ -61,6 +62,8 @@ public static class ServiceCollectionExtensions
             || string.IsNullOrWhiteSpace(auth0.PaymentClientSecret))
             throw new InvalidOperationException(
                 "Auth0:Domain, Audience, ClientId, ClientSecret, AppBaseUrl, ManagementClientId, ManagementClientSecret, PaymentAudience, PaymentClientId, and PaymentClientSecret are required.");
+
+        var useOrganizations = AuthModes.UseAuth0Organizations(configuration);
 
         services.AddAuthentication()
             .AddCookie(Auth0Auth.CookieScheme, options =>
@@ -78,7 +81,7 @@ public static class ServiceCollectionExtensions
                 options.ResponseType = "code";
                 options.CallbackPath = "/auth/callback";
                 options.SignInScheme = Auth0Auth.CookieScheme;
-                options.SaveTokens = false;
+                options.SaveTokens = useOrganizations;
                 options.GetClaimsFromUserInfoEndpoint = true;
                 options.Scope.Clear();
                 options.Scope.Add("openid");
@@ -94,6 +97,13 @@ public static class ServiceCollectionExtensions
                         context.ProtocolMessage.RedirectUri =
                             $"{auth0.AppBaseUrl.TrimEnd('/')}/auth/callback";
                         context.ProtocolMessage.SetParameter("audience", auth0.Audience);
+                        if (useOrganizations
+                            && context.Properties.Items.TryGetValue("organization", out var organization)
+                            && !string.IsNullOrWhiteSpace(organization))
+                        {
+                            context.ProtocolMessage.SetParameter("organization", organization);
+                        }
+
                         return Task.CompletedTask;
                     },
                 };

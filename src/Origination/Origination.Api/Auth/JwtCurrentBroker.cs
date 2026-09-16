@@ -8,6 +8,9 @@ namespace Origination.Api.Auth;
 public sealed class JwtCurrentBroker : ICurrentBroker, ITenantContext
 {
     public const string TenantIdClaimType = "tenant_id";
+    public const string BrokerIdClaimType = "broker_id";
+    public const string NamespacedTenantIdClaimType = "https://api.broker-platform.com/tenant_id";
+    public const string NamespacedBrokerIdClaimType = "https://api.broker-platform.com/broker_id";
 
     private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -16,9 +19,13 @@ public sealed class JwtCurrentBroker : ICurrentBroker, ITenantContext
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public Guid BrokerId => ParseRequired(ClaimTypes.NameIdentifier, JwtRegisteredClaimNames.Sub);
+    public Guid BrokerId => ParseRequired(
+        BrokerIdClaimType,
+        NamespacedBrokerIdClaimType,
+        ClaimTypes.NameIdentifier,
+        JwtRegisteredClaimNames.Sub);
 
-    public Guid TenantId => ParseRequired(TenantIdClaimType);
+    public Guid TenantId => ParseRequired(TenantIdClaimType, NamespacedTenantIdClaimType);
 
     Guid? ITenantContext.TenantId
     {
@@ -26,24 +33,8 @@ public sealed class JwtCurrentBroker : ICurrentBroker, ITenantContext
         {
             var user = _httpContextAccessor.HttpContext?.User;
             if (user is null) return null;
-            var value = user.FindFirst(TenantIdClaimType)?.Value;
-            return Guid.TryParse(value, out var id) ? id : null;
+            return TryParseGuid(user, TenantIdClaimType, NamespacedTenantIdClaimType);
         }
-    }
-
-    private Guid ParseRequired(params string[] claimTypes)
-    {
-        var user = _httpContextAccessor.HttpContext?.User
-            ?? throw new InvalidOperationException("No HTTP context.");
-
-        foreach (var type in claimTypes)
-        {
-            var value = user.FindFirst(type)?.Value;
-            if (Guid.TryParse(value, out var id))
-                return id;
-        }
-
-        throw new InvalidOperationException($"Missing broker claim ({string.Join(", ", claimTypes)}).");
     }
 
     public bool HasPermission(string permission)
@@ -52,6 +43,30 @@ public sealed class JwtCurrentBroker : ICurrentBroker, ITenantContext
         if (user is null || string.IsNullOrEmpty(permission))
             return false;
 
-        return user.FindAll(CasePermissions.ClaimType).Any(c => c.Value == permission);
+        return OriginationAuth.HasPermission(user, permission);
+    }
+
+    private Guid ParseRequired(params string[] claimTypes)
+    {
+        var user = _httpContextAccessor.HttpContext?.User
+            ?? throw new InvalidOperationException("No HTTP context.");
+
+        var id = TryParseGuid(user, claimTypes);
+        if (id is Guid parsed)
+            return parsed;
+
+        throw new InvalidOperationException($"Missing broker claim ({string.Join(", ", claimTypes)}).");
+    }
+
+    private static Guid? TryParseGuid(ClaimsPrincipal user, params string[] claimTypes)
+    {
+        foreach (var type in claimTypes)
+        {
+            var value = user.FindFirst(type)?.Value;
+            if (Guid.TryParse(value, out var id))
+                return id;
+        }
+
+        return null;
     }
 }

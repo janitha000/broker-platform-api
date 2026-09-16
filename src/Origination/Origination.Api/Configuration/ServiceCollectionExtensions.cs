@@ -18,7 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICurrentBroker>(sp => sp.GetRequiredService<JwtCurrentBroker>());
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<JwtCurrentBroker>());
 
-        services.AddBrokerJwtAuthentication(configuration);
+        services.AddBrokerSessionAuthentication(configuration);
         services.AddAuthorization(options =>
         {
             options.AddPolicy(

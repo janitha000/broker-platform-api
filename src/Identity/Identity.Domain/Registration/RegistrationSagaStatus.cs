@@ -21,6 +21,7 @@ public sealed class RegistrationSaga
     public Guid? TenantId { get; set; }
     public Guid? BrokerUserId { get; set; }
     public string? Auth0UserId { get; set; }
+    public string? Auth0OrganizationId { get; set; }
     public int AttemptCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

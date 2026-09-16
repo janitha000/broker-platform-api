@@ -34,6 +34,10 @@ resource "aws_ecs_task_definition" "identity" {
         value = "Production"
       },
       {
+        name  = "Auth__Mode"
+        value = "Auth0Organizations"
+      },
+      {
         name  = "Jwt__Issuer"
         value = "identity"
       },

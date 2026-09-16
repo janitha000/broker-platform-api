@@ -2,6 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 COPY nuget.config .
+COPY src/Shared/Broker.Hosting/Broker.Hosting.csproj Shared/Broker.Hosting/
 COPY src/Identity/Identity.Domain/Identity.Domain.csproj Identity/Identity.Domain/
 COPY src/Identity/Identity.Application/Identity.Application.csproj Identity/Identity.Application/
 COPY src/Identity/Identity.Infrastructure/Identity.Infrastructure.csproj Identity/Identity.Infrastructure/
@@ -15,6 +16,7 @@ RUN dotnet nuget update source github \
       --configfile nuget.config \
  && dotnet restore Identity/Identity.Api/Identity.Api.csproj
 
+COPY src/Shared/Broker.Hosting/ Shared/Broker.Hosting/
 COPY src/Identity/Identity.Domain/ Identity/Identity.Domain/
 COPY src/Identity/Identity.Application/ Identity/Identity.Application/
 COPY src/Identity/Identity.Infrastructure/ Identity/Identity.Infrastructure/

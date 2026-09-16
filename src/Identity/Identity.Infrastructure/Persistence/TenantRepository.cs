@@ -25,4 +25,10 @@ public sealed class TenantRepository : ITenantRepository
         await _context.SaveChangesAsync(cancellationToken);
         return tenant;
     }
+
+    public async Task Update(Tenant tenant, CancellationToken cancellationToken = default)
+    {
+        _context.Tenants.Update(tenant);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

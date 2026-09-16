@@ -15,7 +15,7 @@ public static class ServiceCollectionExtensions
         services.AddControllers();
         services.AddCorsFromConfiguration(configuration);
         services.AddHttpContextAccessor();
-        services.AddBrokerJwtAuthentication(configuration);
+        services.AddBrokerSessionAuthentication(configuration);
         services.AddAuthorization();
         services.AddSignalR();
         services.AddSingleton<IRealtimeNotifier, SignalRRealtimeNotifier>();

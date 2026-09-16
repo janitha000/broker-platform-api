@@ -1,15 +1,49 @@
 # Authentication
 
-Auth0 proves **who the person is**. Identity owns **tenant, billing, and broker profile**, and issues the session cookie Origination already understands. The SPA never holds tokens.
+Auth0 proves **who the person is**. Identity owns **tenant, billing, and broker profile**. The SPA never holds tokens.
+
+`Auth:Mode` selects how the session cookie is minted and validated. **Development defaults to `Auth0Organizations`.** Set `Auth:Mode=IdentityJwt` on Identity, Origination, and Notification together to run the original HMAC path (kept as a learning reference).
+
+| Mode | Who issues `broker.access` | Who validates it | Tenancy / RBAC |
+|---|---|---|---|
+| `IdentityJwt` | Identity HMAC (`JwtTokenIssuer`) | Same `Jwt:Key` | SQL `Tenant` + `BrokerUser.Role` → `permissions` claims |
+| `Auth0Organizations` | Auth0 access token (OIDC `SaveTokens`) | Auth0 JWKS, `aud` = Broker Platform API | SQL `Tenant.Auth0OrganizationId` + Auth0 org roles / API permissions |
 
 | Owner | Responsibility |
 |---|---|
-| Auth0 | Passwords, MFA, lockout, reset, Universal Login, (later) SSO |
-| Identity | `Tenant`, payment, `BrokerUser`, Auth0 user provisioning, `broker.access` |
-| Origination | Case access using `tenant_id` / broker id from `broker.access` |
+| Auth0 | Passwords, MFA, Universal Login, Organizations, RBAC on Broker Platform API |
+| Identity | `Tenant`, payment, `BrokerUser`, Auth0 user **and** org provisioning, BFF cookies |
+| Origination | Case access using `tenant_id` / `broker_id` from the cookie JWT |
 | SPA | Redirect to Identity for login/logout; `GET /auth/me` for UI state |
 
-Auth0 **Organizations** are not used yet. Tenancy lives in Identity SQL (`Tenant` + `BrokerUser.TenantId`). Organizations can be added later (one Auth0 org per brokerage, `organization` on `/authorize`).
+Never take `org_id` from the request body. Origination still filters cases by SQL `Tenant.Id` (Guid) from custom claims.
+
+---
+
+## Auth0 Organizations dashboard (live mode)
+
+Keep the existing six Auth0 artefacts. Then:
+
+1. Enable **Organizations** on the tenant. Regular Web App → Login Experience → **Business Users**.
+2. Broker Platform API → enable **RBAC** and **Add Permissions in the Access Token**. Enable Organizations on that API.
+3. Permissions (same strings as `BrokerPermissions`): `cases:read`, `cases:create`, `cases:fact-find`, `cases:fact-find-any`, `cases:lodge`, `cases:settle`.
+4. Roles `Principal`, `Assistant`, `ReadOnly` with the same matrix as IdentityJwt. Optional config `Auth0:PrincipalRoleId` if lookup by name fails.
+5. Management M2M: add `create:organizations`, `create:organization_connections`, `create:organization_members`, `create:organization_member_roles`, `read:roles`, `read:connections` (plus existing `create:users` / `read:users`).
+6. Enable the database connection for each org (Identity does this via Management API after create).
+7. Post-login **Action** on the Regular Web App (Login / Post Login) so Origination can keep Guid columns:
+
+```javascript
+exports.onExecutePostLogin = async (event, api) => {
+  const tenantId = event.user.app_metadata?.tenant_id;
+  const brokerId = event.user.app_metadata?.broker_id;
+  if (tenantId) api.accessToken.setCustomClaim("tenant_id", tenantId);
+  if (brokerId) api.accessToken.setCustomClaim("broker_id", brokerId);
+};
+```
+
+Identity already writes `app_metadata.tenant_id` / `broker_id` in `HttpAuth0UserDirectory`. Namespaced claims `https://api.broker-platform.com/tenant_id` are also accepted.
+
+Auth0 access tokens often expire in about **one hour** (vs 8-hour HMAC). There is no refresh endpoint yet; the user signs in again.
 
 ---
 
@@ -28,7 +62,9 @@ Six artefacts. Do not collapse them into one “app”. Do not reuse BFF or Mana
 
 The Regular Web App must be allowed to request the Broker Platform API (user-delegated access / API grant). **Broker Identity Management** must **not** be a client of Broker Platform API or Payment API; it only calls Auth0 Management API. **Identity Service** must **not** call Management API.
 
-Login Experience for the BFF app must be **Individuals** (not Business Users). Business Users requires `organization` on `/authorize`, which this code does not send.
+`IdentityJwt` mode: Login Experience **Individuals** (no `organization` on `/authorize`).
+
+`Auth0Organizations` mode: Login Experience **Business Users**. Optional `?organization=org_xxx` on `GET /auth/login`; otherwise Auth0 shows the org picker.
 
 ### Callbacks (browser origin, not Kestrel)
 
@@ -48,11 +84,13 @@ Never use `localhost:5250`. Vite and CloudFront proxy `/auth*` to Identity so co
 |---|---|---|
 | Correlation / nonce (`.AspNetCore.Correlation.*`) | `Challenge("Auth0")` | Tie Auth0 callback to this browser. Middleware only. |
 | `broker.oidc` | After `/auth/callback` succeeds | Short handshake: Auth0 claims. Dropped on `/auth/complete`. |
-| `broker.access` | After complete (or register) | HMAC JWT, 8 hours, httpOnly, `SameSite=Lax`. What APIs trust. |
+| `broker.access` | After `/auth/complete` (and after register in `IdentityJwt` only) | Session JWT. **HMAC** in `IdentityJwt`; **Auth0 access token** in `Auth0Organizations`. httpOnly, `SameSite=Lax`. |
 
-`broker.access` claims: `sub` / name identifier = broker id, `tenant_id`, `email`. Issuer `identity`, audience `broker-platform` (not the Auth0 API identifier). Signing key is `Jwt:Key` / `origination/dev/jwt`.
+`IdentityJwt` HMAC claims: `sub` / name identifier = broker id, `tenant_id`, `email`, `role`, `permissions`. Issuer `identity`, audience `broker-platform`. Signing key `Jwt:Key`.
 
-Default authentication remains JWT Bearer (`AddBrokerJwtAuthentication`). OIDC is an extra scheme used only for `Challenge("Auth0")` and `/auth/callback`.
+`Auth0Organizations` access token: Auth0 `iss`/`aud` (Broker Platform API), `permissions` and/or `scope`, custom `tenant_id` / `broker_id`. `sub` is `auth0|…` — do not use it as `Case.BrokerId`.
+
+Default authentication is JWT Bearer (`AddBrokerSessionAuthentication`). OIDC is an extra scheme for `Challenge("Auth0")` and `/auth/callback`.
 
 ---
 
@@ -73,6 +111,8 @@ ASP.NET maps `Auth0__*` env vars to `Auth0:*`.
 | `Auth0:PaymentClientSecret` | Secrets Manager `identity/dev/auth0-payment` | Identity Service |
 | `Auth0:AppBaseUrl` | ECS env | SPA origin (5173 or CloudFront). Required at startup. |
 | `Auth0:DatabaseConnection` | default | `Username-Password-Authentication` |
+| `Auth0:PrincipalRoleId` | optional | Auth0 role id for Principal; else lookup by name |
+| `Auth:Mode` | ECS `Auth__Mode` | `IdentityJwt` or `Auth0Organizations` |
 
 Local: `dotnet user-secrets` for BFF, Management, and Payment client secrets; non-secrets in `appsettings.Development.json`.
 
@@ -128,7 +168,7 @@ sequenceDiagram
     Identity->>Identity: Drop broker.oidc
     Identity->>DB: BrokerUser by Auth0UserId then email
     alt User exists
-        Identity->>Identity: Issue HMAC JWT
+        Identity->>Identity: IdentityJwt: HMAC JWT / Organizations: copy Auth0 access_token
         Identity->>Broker: Set broker.access, 302 AppBaseUrl/
     else No BrokerUser
         Identity->>Broker: 302 AppBaseUrl/register
@@ -225,9 +265,15 @@ sequenceDiagram
         Identity->>DB: Tenant + BrokerUser
         Identity->>Auth0: POST /api/v2/users (client credentials)
     end
+    Identity->>Auth0: POST org + member + Principal role when Auth0Organizations
+    Identity->>DB: Tenant.Auth0OrganizationId
     Auth0-->>Identity: user_id (auth0|…)
     Identity->>DB: BrokerUser.Auth0UserId
-    Identity->>Broker: Set broker.access, 201
+    alt IdentityJwt
+        Identity->>Broker: Set HMAC broker.access, 201
+    else Auth0Organizations
+        Identity->>Broker: 201, no session cookie (SPA then GET /auth/login)
+    end
 ```
 
 If Auth0 fails after SQL, register returns **503** (`IdentityProviderUnavailable`). A later register with the same email retries Auth0 only.
@@ -269,12 +315,12 @@ flowchart LR
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| POST | `/auth/register` | Anonymous | Payment + SQL + Auth0 user; sets `broker.access` |
-| GET | `/auth/login` | Anonymous | OIDC challenge |
+| POST | `/auth/register` | Anonymous | Payment + SQL + Auth0 user (and org in Organizations mode). HMAC cookie only in `IdentityJwt`. |
+| GET | `/auth/login` | Anonymous | OIDC challenge; optional `?organization=` |
 | GET | `/auth/callback` | Middleware | Code exchange; not a controller |
-| GET | `/auth/complete` | `broker.oidc` | Issue `broker.access`; redirect to SPA |
+| GET | `/auth/complete` | `broker.oidc` | Set `broker.access`; redirect to SPA |
 | GET/POST | `/auth/logout` | Anonymous | Clear cookie + Auth0 logout |
-| POST | `/auth/login` | Anonymous | Password login (legacy) |
+| POST | `/auth/login` | Anonymous | Password login; **410** when `Auth0Organizations` |
 | GET | `/auth/me` | `broker.access` | Session for SPA |
 | * | `/cases*` | `broker.access` | Origination |
 
@@ -285,7 +331,7 @@ flowchart LR
 | Auth0 error | Cause | Fix |
 |---|---|---|
 | Client is not authorized to access resource server | BFF app has no grant on Broker Platform API | App → API Access → Broker Platform API → user-delegated grant. Add a permission (e.g. `read:cases`) if the list is empty. |
-| `organization is required` / `organization_required` | App requires Organizations | Login Experience: **Individuals**, Save. If it still fails, client `organization_usage` is `require` — set to `deny` via Management API `PATCH /api/v2/clients/{id}`. |
+| `organization is required` / `organization_required` | App requires Organizations | Expected in `Auth0Organizations`. In `IdentityJwt`, Login Experience **Individuals**. |
 | Callback mismatch | `redirect_uri` not on the allow list | Must match `AppBaseUrl/auth/callback` (5173 and CloudFront). |
 | Identity crash: Auth0 fields required | ECS task missing an env var | `Auth0__AppBaseUrl` must be on the **current** task definition (`terraform apply`). Secrets Manager secrets need a version. |
 
@@ -295,7 +341,7 @@ Revoke **Auth0 Management API** user-delegated access on the Regular Web App. On
 
 ## Not done
 
-- Auth0 Organizations (one org per `Tenant`)
-- Origination validating Auth0 JWTs (JWKS); still HMAC `broker.access`
+- Refresh tokens / `/auth/refresh` for short Auth0 access-token TTL
+- Kinde
 - Dropping `PasswordHash` from SQL
 - Auth0 SPA SDK / tokens in the browser

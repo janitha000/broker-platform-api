@@ -41,6 +41,18 @@ resource "aws_ecs_task_definition" "notification" {
         value = "Production"
       },
       {
+        name  = "Auth__Mode"
+        value = "Auth0Organizations"
+      },
+      {
+        name  = "Auth0__Domain"
+        value = "dev-ggsd0s-z.us.auth0.com"
+      },
+      {
+        name  = "Auth0__Audience"
+        value = "https://api.broker-platform.com"
+      },
+      {
         name  = "Email__Provider"
         value = "Mock"
       },

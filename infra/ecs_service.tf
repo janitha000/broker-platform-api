@@ -34,6 +34,10 @@ resource "aws_ecs_task_definition" "api" {
         value = "Production"
       },
       {
+        name  = "Auth__Mode"
+        value = "Auth0Organizations"
+      },
+      {
         name  = "Jwt__Issuer"
         value = "identity"
       },
@@ -56,6 +60,14 @@ resource "aws_ecs_task_definition" "api" {
       {
         name  = "Messaging__AwsRegion"
         value = var.aws_region
+      },
+      {
+        name  = "Auth0__Domain"
+        value = "dev-ggsd0s-z.us.auth0.com"
+      },
+      {
+        name  = "Auth0__Audience"
+        value = "https://api.broker-platform.com"
       }
     ]
     secrets = [

@@ -21,17 +21,20 @@ public sealed class AuthController : ControllerBase
     private readonly LoginHandler _loginHandler;
     private readonly CompleteAuth0LoginHandler _completeAuth0LoginHandler;
     private readonly Auth0Options _auth0;
+    private readonly AuthOptions _auth;
 
     public AuthController(
         RegisterTenantHandler registerTenantHandler,
         LoginHandler loginHandler,
         CompleteAuth0LoginHandler completeAuth0LoginHandler,
-        IOptions<Auth0Options> auth0)
+        IOptions<Auth0Options> auth0,
+        IOptions<AuthOptions> auth)
     {
         _registerTenantHandler = registerTenantHandler;
         _loginHandler = loginHandler;
         _completeAuth0LoginHandler = completeAuth0LoginHandler;
         _auth0 = auth0.Value;
+        _auth = auth.Value;
     }
 
     [AllowAnonymous]
@@ -74,6 +77,9 @@ public sealed class AuthController : ControllerBase
         [FromBody] LoginCommand command,
         CancellationToken cancellationToken = default)
     {
+        if (_auth.UseAuth0Organizations)
+            return StatusCode(StatusCodes.Status410Gone);
+
         var result = await _loginHandler.Handle(command, cancellationToken);
         if (result is null)
             return Unauthorized();
@@ -84,11 +90,13 @@ public sealed class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("login")]
-    public IActionResult Login([FromQuery] string? returnUrl)
+    public IActionResult Login([FromQuery] string? returnUrl, [FromQuery] string? organization)
     {
         var path = SafeReturnPath(returnUrl);
         var complete = $"{AppBaseUrl()}/auth/complete?returnUrl={Uri.EscapeDataString(path)}";
         var properties = new AuthenticationProperties { RedirectUri = complete };
+        if (!string.IsNullOrWhiteSpace(organization))
+            properties.Items["organization"] = organization.Trim();
         return Challenge(properties, Auth0Auth.ChallengeScheme);
     }
 
@@ -101,6 +109,8 @@ public sealed class AuthController : ControllerBase
         var oidc = await HttpContext.AuthenticateAsync(Auth0Auth.CookieScheme);
         if (!oidc.Succeeded || oidc.Principal is null)
             return Unauthorized();
+
+        var accessToken = oidc.Properties?.GetTokenValue("access_token");
 
         var email = oidc.Principal.FindFirst(JwtRegisteredClaimNames.Email)?.Value
             ?? oidc.Principal.FindFirst(ClaimTypes.Email)?.Value
@@ -120,7 +130,17 @@ public sealed class AuthController : ControllerBase
         if (result is null)
             return Redirect($"{AppBaseUrl()}/register");
 
-        AppendAccessCookie(result.AccessToken);
+        if (_auth.UseAuth0Organizations)
+        {
+            if (string.IsNullOrEmpty(accessToken))
+                return Unauthorized();
+            AppendAccessCookie(accessToken);
+        }
+        else
+        {
+            AppendAccessCookie(result.AccessToken);
+        }
+
         return Redirect($"{AppBaseUrl()}{SafeReturnPath(returnUrl)}");
     }
 
@@ -142,23 +162,30 @@ public sealed class AuthController : ControllerBase
     [HttpGet("me")]
     public IActionResult Me()
     {
-        var brokerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+        var brokerId = User.FindFirst("broker_id")?.Value
+            ?? User.FindFirst("https://api.broker-platform.com/broker_id")?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        var tenantId = User.FindFirst("tenant_id")?.Value;
-        var email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
-        var role = User.FindFirst(BrokerPermissions.RoleClaimType)?.Value;
+        var tenantId = User.FindFirst("tenant_id")?.Value
+            ?? User.FindFirst("https://api.broker-platform.com/tenant_id")?.Value;
+        var email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value
+            ?? User.FindFirst(ClaimTypes.Email)?.Value
+            ?? User.FindFirst("email")?.Value;
+        var role = User.FindFirst(BrokerPermissions.RoleClaimType)?.Value
+            ?? User.FindFirst("https://api.broker-platform.com/roles")?.Value
+            ?? User.FindAll("roles").FirstOrDefault()?.Value;
         if (!Guid.TryParse(brokerId, out var broker)
             || !Guid.TryParse(tenantId, out var tenant)
-            || string.IsNullOrEmpty(email)
-            || string.IsNullOrEmpty(role))
+            || string.IsNullOrEmpty(email))
             return Unauthorized();
 
-        return Ok(ToUser(tenant, broker, email, role));
+        return Ok(ToUser(tenant, broker, email, role ?? string.Empty));
     }
 
     private IActionResult CreatedWithCookie(RegisterTenantResult result)
     {
-        AppendAccessCookie(result.AccessToken);
+        if (!_auth.UseAuth0Organizations)
+            AppendAccessCookie(result.AccessToken);
         return Created(string.Empty, ToUser(result.TenantId, result.BrokerId, result.Email, result.Role));
     }
 

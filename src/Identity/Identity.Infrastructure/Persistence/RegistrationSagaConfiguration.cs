@@ -32,6 +32,9 @@ public sealed class RegistrationSagaConfiguration : IEntityTypeConfiguration<Reg
         builder.Property(s => s.Auth0UserId)
             .HasMaxLength(128);
 
+        builder.Property(s => s.Auth0OrganizationId)
+            .HasMaxLength(64);
+
         builder.Property(s => s.LastError)
             .HasMaxLength(500);
 

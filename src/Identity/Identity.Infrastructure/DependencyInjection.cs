@@ -19,6 +19,7 @@ public static class DependencyInjection
     {
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<PaymentOptions>(configuration.GetSection(PaymentOptions.SectionName));
+        services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
         services.AddSingleton<ITokenIssuer, JwtTokenIssuer>();
         services.AddSingleton<Auth0ManagementTokenCache>();
@@ -41,6 +42,12 @@ public static class DependencyInjection
 
         services.Configure<Auth0Options>(configuration.GetSection(Auth0Options.SectionName));
         services.AddHttpClient<IAuth0UserDirectory, HttpAuth0UserDirectory>((sp, client) =>
+        {
+            var auth0 = sp.GetRequiredService<IOptions<Auth0Options>>().Value;
+            client.BaseAddress = new Uri($"https://{auth0.Domain}/");
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+        services.AddHttpClient<IAuth0OrganizationDirectory, HttpAuth0OrganizationDirectory>((sp, client) =>
         {
             var auth0 = sp.GetRequiredService<IOptions<Auth0Options>>().Value;
             client.BaseAddress = new Uri($"https://{auth0.Domain}/");

@@ -13,6 +13,14 @@ public static class OriginationAuth
 
     public static bool HasPermission(ClaimsPrincipal user, string permission)
     {
-        return user.FindAll(CasePermissions.ClaimType).Any(c => c.Value == permission);
+        if (user.FindAll(CasePermissions.ClaimType).Any(c => c.Value == permission))
+            return true;
+
+        var scope = user.FindFirst("scope")?.Value;
+        if (string.IsNullOrEmpty(scope))
+            return false;
+
+        return scope.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Contains(permission);
     }
 }

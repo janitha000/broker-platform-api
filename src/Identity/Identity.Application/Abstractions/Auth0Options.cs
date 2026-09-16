@@ -13,6 +13,8 @@ public sealed class Auth0Options
     public string ManagementClientId { get; set; } = string.Empty;
     public string ManagementClientSecret { get; set; } = string.Empty;
     public string DatabaseConnection { get; set; } = "Username-Password-Authentication";
+    /// <summary>Auth0 role id for Principal (org member roles). Looked up by name if empty.</summary>
+    public string PrincipalRoleId { get; set; } = string.Empty;
     public string PaymentAudience { get; set; } = string.Empty;
     public string PaymentClientId { get; set; } = string.Empty;
     public string PaymentClientSecret { get; set; } = string.Empty;

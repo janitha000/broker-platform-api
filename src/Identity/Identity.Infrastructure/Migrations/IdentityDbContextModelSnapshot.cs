@@ -91,6 +91,10 @@ namespace Identity.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Auth0OrganizationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.HasKey("Id");
 
                     b.ToTable("Tenants", (string)null);
@@ -108,6 +112,10 @@ namespace Identity.Infrastructure.Migrations
                     b.Property<string>("Auth0UserId")
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Auth0OrganizationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<Guid?>("BrokerUserId")
                         .HasColumnType("uniqueidentifier");

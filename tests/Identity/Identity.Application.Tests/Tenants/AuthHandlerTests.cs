@@ -4,6 +4,7 @@ using Identity.Application.Tenants.Login;
 using Identity.Application.Tenants.RegisterTenant;
 using Identity.Domain.Registration;
 using Identity.Domain.Tenants;
+using Microsoft.Extensions.Options;
 
 namespace Identity.Application.Tests.Tenants;
 
@@ -23,7 +24,9 @@ public sealed class AuthHandlerTests
         IPaymentGateway? payment = null,
         ITenantRepository? tenants = null,
         IAuth0UserDirectory? auth0 = null,
-        IRegistrationSagaRepository? sagas = null) =>
+        IRegistrationSagaRepository? sagas = null,
+        IAuth0OrganizationDirectory? organizations = null,
+        AuthOptions? auth = null) =>
         new(
             tenants ?? new InMemoryTenantRepository(),
             users ?? new InMemoryBrokerUserRepository(),
@@ -31,7 +34,9 @@ public sealed class AuthHandlerTests
             new FakePasswordHasher(),
             new FakeTokenIssuer(),
             payment ?? new StubPaymentGateway(PaymentChargeStatus.Succeeded),
-            auth0 ?? new StubAuth0UserDirectory(Auth0ProvisionKind.Succeeded, "auth0|1"));
+            auth0 ?? new StubAuth0UserDirectory(Auth0ProvisionKind.Succeeded, "auth0|1"),
+            organizations ?? new StubAuth0OrganizationDirectory(),
+            Options.Create(auth ?? new AuthOptions { Mode = AuthOptions.IdentityJwt }));
 
     [Fact]
     public async Task Register_CreatesTenantAndUser_AndReturnsToken()
@@ -56,6 +61,24 @@ public sealed class AuthHandlerTests
         Assert.Equal("hash:secret", stored.PasswordHash);
         Assert.Equal("auth0|1", stored.Auth0UserId);
         Assert.Equal(BrokerRole.Principal, stored.Role);
+    }
+
+    [Fact]
+    public async Task Register_OrgMode_StoresAuth0OrganizationId()
+    {
+        var tenants = new InMemoryTenantRepository();
+        var orgs = new StubAuth0OrganizationDirectory();
+        var outcome = await RegisterHandler(
+                tenants: tenants,
+                organizations: orgs,
+                auth: new AuthOptions { Mode = AuthOptions.Auth0Organizations })
+            .Handle(RegisterCommand());
+
+        Assert.Equal(RegisterTenantKind.Succeeded, outcome.Kind);
+        Assert.Equal(1, orgs.CreateCalls);
+        Assert.Equal(1, orgs.MemberCalls);
+        var tenant = await tenants.GetById(outcome.Result!.TenantId);
+        Assert.Equal("org_test", tenant!.Auth0OrganizationId);
     }
 
     [Fact]
@@ -280,6 +303,29 @@ file sealed class CountingPaymentGateway(PaymentChargeStatus status) : IPaymentG
     }
 }
 
+file sealed class StubAuth0OrganizationDirectory : IAuth0OrganizationDirectory
+{
+    public int CreateCalls { get; private set; }
+    public int MemberCalls { get; private set; }
+
+    public Task<Auth0OrganizationResult> CreateOrganization(
+        string displayName,
+        CancellationToken cancellationToken = default)
+    {
+        CreateCalls++;
+        return Task.FromResult(new Auth0OrganizationResult(true, "org_test"));
+    }
+
+    public Task<bool> AddMemberWithPrincipalRole(
+        string organizationId,
+        string auth0UserId,
+        CancellationToken cancellationToken = default)
+    {
+        MemberCalls++;
+        return Task.FromResult(true);
+    }
+}
+
 file sealed class StubAuth0UserDirectory(Auth0ProvisionKind kind, string? userId) : IAuth0UserDirectory
 {
     public Task<Auth0ProvisionResult> ProvisionUser(
@@ -366,6 +412,12 @@ file sealed class InMemoryTenantRepository : ITenantRepository
     {
         _tenants.TryGetValue(id, out var tenant);
         return Task.FromResult(tenant);
+    }
+
+    public Task Update(Tenant tenant, CancellationToken cancellationToken = default)
+    {
+        _tenants[tenant.Id] = tenant;
+        return Task.CompletedTask;
     }
 }
 

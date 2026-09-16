@@ -1,5 +1,10 @@
 # Broker.Hosting
 
-Shared cookie JWT authentication (`broker.access`) for the Identity and Origination ASP.NET hosts.
+Shared `broker.access` cookie authentication for Identity, Origination, and Notification.
 
-Identity sets this cookie after Auth0 login (or register). Origination does not talk to Auth0. See [AUTH.md](../../../../AUTH.md).
+`AddBrokerSessionAuthentication` picks a validator from `Auth:Mode`:
+
+- `IdentityJwt` (learning reference): HMAC JWT issued by Identity (`AddBrokerJwtAuthentication`).
+- `Auth0Organizations` (default in Development): Auth0 access token validated via JWKS (`AddAuth0AccessTokenAuthentication`).
+
+Identity still runs the OIDC BFF. See [AUTH.md](../../../../AUTH.md).

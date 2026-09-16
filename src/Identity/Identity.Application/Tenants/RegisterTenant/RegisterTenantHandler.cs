@@ -1,6 +1,7 @@
 using Identity.Application.Abstractions;
 using Identity.Domain.Registration;
 using Identity.Domain.Tenants;
+using Microsoft.Extensions.Options;
 
 namespace Identity.Application.Tenants.RegisterTenant;
 
@@ -13,6 +14,8 @@ public sealed class RegisterTenantHandler
     private readonly ITokenIssuer _tokenIssuer;
     private readonly IPaymentGateway _paymentGateway;
     private readonly IAuth0UserDirectory _auth0UserDirectory;
+    private readonly IAuth0OrganizationDirectory _auth0Organizations;
+    private readonly AuthOptions _auth;
 
     public RegisterTenantHandler(
         ITenantRepository tenantRepository,
@@ -21,7 +24,9 @@ public sealed class RegisterTenantHandler
         IPasswordHasher passwordHasher,
         ITokenIssuer tokenIssuer,
         IPaymentGateway paymentGateway,
-        IAuth0UserDirectory auth0UserDirectory)
+        IAuth0UserDirectory auth0UserDirectory,
+        IAuth0OrganizationDirectory auth0Organizations,
+        IOptions<AuthOptions> auth)
     {
         _tenantRepository = tenantRepository;
         _brokerUserRepository = brokerUserRepository;
@@ -30,6 +35,8 @@ public sealed class RegisterTenantHandler
         _tokenIssuer = tokenIssuer;
         _paymentGateway = paymentGateway;
         _auth0UserDirectory = auth0UserDirectory;
+        _auth0Organizations = auth0Organizations;
+        _auth = auth.Value;
     }
 
     public async Task<RegisterTenantOutcome> Handle(
@@ -169,6 +176,18 @@ public sealed class RegisterTenantHandler
             return new RegisterTenantOutcome(RegisterTenantKind.IdentityProviderUnavailable, null);
         }
 
+        if (_auth.UseAuth0Organizations)
+        {
+            var attached = await AttachOrganization(user, provision.UserId, saga, cancellationToken);
+            if (!attached)
+            {
+                if (saga?.ChargeId is Guid chargeId)
+                    await Compensate(saga, chargeId, cancellationToken);
+
+                return new RegisterTenantOutcome(RegisterTenantKind.IdentityProviderUnavailable, null);
+            }
+        }
+
         user.Auth0UserId = provision.UserId;
         await _brokerUserRepository.Update(user, cancellationToken);
 
@@ -184,6 +203,36 @@ public sealed class RegisterTenantHandler
         return new RegisterTenantOutcome(
             RegisterTenantKind.Succeeded,
             new RegisterTenantResult(user.TenantId, user.Id, user.Email, accessToken, user.Role));
+    }
+
+    private async Task<bool> AttachOrganization(
+        BrokerUser user,
+        string auth0UserId,
+        RegistrationSaga? saga,
+        CancellationToken cancellationToken)
+    {
+        var tenant = await _tenantRepository.GetById(user.TenantId, cancellationToken);
+        if (tenant is null)
+            return false;
+
+        var orgId = saga?.Auth0OrganizationId ?? tenant.Auth0OrganizationId;
+        if (string.IsNullOrWhiteSpace(orgId))
+        {
+            var created = await _auth0Organizations.CreateOrganization(tenant.Name, cancellationToken);
+            if (!created.Succeeded || string.IsNullOrWhiteSpace(created.OrganizationId))
+                return false;
+
+            orgId = created.OrganizationId;
+            tenant.Auth0OrganizationId = orgId;
+            await _tenantRepository.Update(tenant, cancellationToken);
+            if (saga is not null)
+            {
+                saga.Auth0OrganizationId = orgId;
+                await _sagas.Update(saga, cancellationToken);
+            }
+        }
+
+        return await _auth0Organizations.AddMemberWithPrincipalRole(orgId, auth0UserId, cancellationToken);
     }
 
     private async Task Compensate(

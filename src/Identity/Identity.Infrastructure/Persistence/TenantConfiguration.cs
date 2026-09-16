@@ -18,5 +18,8 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         builder.Property(t => t.CreatedAt)
             .IsRequired();
+
+        builder.Property(t => t.Auth0OrganizationId)
+            .HasMaxLength(64);
     }
 }
