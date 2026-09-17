@@ -1,8 +1,10 @@
 using Amazon;
 using Amazon.S3;
+using Broker.Hosting.Audit;
 using Document.Application.Abstractions;
 using Document.Domain.Abstractions;
 using Document.Domain.Documents;
+using Document.Domain.Outbox;
 using Document.Infrastructure.Messaging;
 using Document.Infrastructure.Persistence;
 using Document.Infrastructure.Storage;
@@ -31,8 +33,19 @@ public static class DependencyInjection
         services.AddScoped<ICaseDocumentRepository, CaseDocumentRepository>();
         services.AddScoped<IDocumentAccessLogRepository, DocumentAccessLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IOutbox, Outbox>();
+        services.AddScoped<IAuditRecorder, OutboxAuditRecorder>();
         services.AddScoped<IObjectStore, S3ObjectStore>();
         services.AddSingleton<IMalwareScanner, AllowlistMalwareScanner>();
+        services.Configure<MessagingOptions>(configuration.GetSection(MessagingOptions.SectionName));
+
+        var busProvider = configuration["Messaging:Provider"] ?? "Logging";
+        if (string.Equals(busProvider, "EventBridge", StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<IMessageBus, EventBridgeMessageBus>();
+        else
+            services.AddSingleton<IMessageBus, LoggingMessageBus>();
+
+        services.AddHostedService<OutboxPublisher>();
         services.AddHostedService<LandingObjectCreatedWorker>();
 
         return services;

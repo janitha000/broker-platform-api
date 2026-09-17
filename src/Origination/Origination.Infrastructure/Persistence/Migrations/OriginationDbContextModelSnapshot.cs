@@ -68,8 +68,7 @@ namespace Origination.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Payload")
                         .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("datetime2");

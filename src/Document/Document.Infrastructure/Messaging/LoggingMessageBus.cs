@@ -1,0 +1,20 @@
+using Document.Application.Abstractions;
+using Microsoft.Extensions.Logging;
+
+namespace Document.Infrastructure.Messaging;
+
+public sealed class LoggingMessageBus : IMessageBus
+{
+    private readonly ILogger<LoggingMessageBus> _logger;
+
+    public LoggingMessageBus(ILogger<LoggingMessageBus> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task Publish(string type, string payload, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Outbox publish {Type} {Payload}", type, payload);
+        return Task.CompletedTask;
+    }
+}

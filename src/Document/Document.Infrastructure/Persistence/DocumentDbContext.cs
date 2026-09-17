@@ -28,6 +28,7 @@ public sealed class DocumentDbContext : DbContext
     {
         modelBuilder.ApplyConfiguration(new CaseDocumentConfiguration());
         modelBuilder.ApplyConfiguration(new DocumentAccessLogConfiguration());
+        modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
 
         modelBuilder.Entity<CaseDocument>()
             .HasQueryFilter(x =>

@@ -1,3 +1,4 @@
+namespace Document.Infrastructure.Messaging;
 
 public sealed class SqsWorkerOptions
 {

@@ -1,8 +1,7 @@
 using Document.Domain.Outbox;
-using Document.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace Origination.Infrastructure.Persistence;
+namespace Document.Infrastructure.Persistence;
 
 public sealed class Outbox : IOutbox
 {
