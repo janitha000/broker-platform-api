@@ -7,6 +7,7 @@ using Origination.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Broker.Hosting.Audit;
 
 namespace Origination.Infrastructure;
 
@@ -19,7 +20,10 @@ public static class DependencyInjection
         services.AddScoped<ICaseRepository, CaseRepository>();
         services.AddScoped<IOutbox, Outbox>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IAuditRecorder, OutboxAuditRecorder>();
+
         services.Configure<MessagingOptions>(configuration.GetSection(MessagingOptions.SectionName));
+
 
         var provider = configuration["Messaging:Provider"] ?? "Logging";
         if (string.Equals(provider, "EventBridge", StringComparison.OrdinalIgnoreCase))

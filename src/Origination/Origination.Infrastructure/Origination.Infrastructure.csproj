@@ -8,6 +8,8 @@
 <ItemGroup>
   <ProjectReference Include="..\Origination.Application\Origination.Application.csproj" />
   <ProjectReference Include="..\Origination.Domain\Origination.Domain.csproj" />
+  <ProjectReference Include="..\..\Shared\Broker.Hosting\Broker.Hosting.csproj" />
+  
 </ItemGroup>
 <ItemGroup>
   <PackageReference Include="AWSSDK.EventBridge" Version="3.7.400.0" />

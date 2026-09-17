@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Document.Application\Document.Application.csproj" />
     <ProjectReference Include="..\Document.Domain\Document.Domain.csproj" />
+    <ProjectReference Include="..\..\Shared\Broker.Hosting\Broker.Hosting.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,5 +25,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <PackageReference Include="AWSSDK.EventBridge" Version="3.7.400.0" />
   </ItemGroup>
 </Project>

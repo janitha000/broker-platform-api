@@ -1,6 +1,7 @@
 using Document.Application.Abstractions;
 using Document.Domain.Abstractions;
 using Document.Domain.Documents;
+using Document.Domain.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace Document.Infrastructure.Persistence;
@@ -19,6 +20,9 @@ public sealed class DocumentDbContext : DbContext
 
     public DbSet<CaseDocument> CaseDocuments => Set<CaseDocument>();
     public DbSet<DocumentAccessLog> DocumentAccessLogs => Set<DocumentAccessLog>();
+
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
