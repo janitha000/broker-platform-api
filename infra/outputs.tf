@@ -105,3 +105,27 @@ output "event_bus_name" {
 output "notification_queue_url" {
   value = aws_sqs_queue.notification_commands.url
 }
+
+output "document_ecr_repository_url" {
+  value = aws_ecr_repository.document.repository_url
+}
+
+output "document_landing_bucket" {
+  value = aws_s3_bucket.document_landing.id
+}
+
+output "document_clean_bucket" {
+  value = aws_s3_bucket.document_clean.id
+}
+
+output "document_quarantine_bucket" {
+  value = aws_s3_bucket.document_quarantine.id
+}
+
+output "document_landing_queue_url" {
+  value = aws_sqs_queue.document_landing.url
+}
+
+output "document_sql_secret_arn" {
+  value = aws_secretsmanager_secret.document_sql.arn
+}

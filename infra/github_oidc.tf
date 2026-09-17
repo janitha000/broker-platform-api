@@ -87,6 +87,7 @@ data "aws_iam_policy_document" "github_ecr" {
       aws_ecr_repository.identity.arn,
       aws_ecr_repository.payment.arn,
       aws_ecr_repository.notification.arn,
+      aws_ecr_repository.document.arn,
     ]
   }
 }
@@ -186,6 +187,7 @@ data "aws_iam_policy_document" "github_ecs" {
       "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/origination-dev/identity-api",
       "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/origination-dev/payment-api",
       "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/origination-dev/notification-api",
+      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/origination-dev/document-api",
     ]
   }
 }
