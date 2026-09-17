@@ -8,6 +8,9 @@ public static class BrokerPermissions
     public const string CasesFactFindAny = "cases:fact-find-any";
     public const string CasesLodge = "cases:lodge";
     public const string CasesSettle = "cases:settle";
+    public const string DocumentsRead = "documents:read";
+    public const string DocumentsUpload = "documents:upload";
+    public const string DocumentsSensitiveRead = "documents:sensitive-read";
 
     public const string ClaimType = "permissions";
     public const string RoleClaimType = "role";
@@ -22,16 +25,22 @@ public static class BrokerPermissions
             CasesFactFindAny,
             CasesLodge,
             CasesSettle,
+            DocumentsRead,
+            DocumentsUpload,
+            DocumentsSensitiveRead,
         ],
         BrokerRole.Assistant =>
         [
             CasesRead,
             CasesCreate,
             CasesFactFind,
+            DocumentsRead,
+            DocumentsUpload,
         ],
         BrokerRole.ReadOnly =>
         [
             CasesRead,
+            DocumentsRead,
         ],
         _ => [],
     };
