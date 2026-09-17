@@ -1,7 +1,10 @@
+using Broker.Hosting.Audit;
 using Identity.Application.Abstractions;
+using Identity.Domain.Outbox;
 using Identity.Domain.Registration;
 using Identity.Domain.Tenants;
 using Identity.Infrastructure.Auth;
+using Identity.Infrastructure.Messaging;
 using Identity.Infrastructure.Payments;
 using Identity.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +30,17 @@ public static class DependencyInjection
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IBrokerUserRepository, BrokerUserRepository>();
         services.AddScoped<IRegistrationSagaRepository, RegistrationSagaRepository>();
+        services.AddScoped<IOutbox, Outbox>();
+        services.AddScoped<IAuditRecorder, OutboxAuditRecorder>();
+        services.Configure<MessagingOptions>(configuration.GetSection(MessagingOptions.SectionName));
+
+        var busProvider = configuration["Messaging:Provider"] ?? "Logging";
+        if (string.Equals(busProvider, "EventBridge", StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<IMessageBus, EventBridgeMessageBus>();
+        else
+            services.AddSingleton<IMessageBus, LoggingMessageBus>();
+
+        services.AddHostedService<OutboxPublisher>();
 
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("Identity")));
