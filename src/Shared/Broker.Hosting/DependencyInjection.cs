@@ -1,6 +1,8 @@
 using System.Text;
+using Broker.Hosting.Audit;
 using Broker.Hosting.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Broker.Hosting;
@@ -11,6 +13,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler, AuditDenyResultHandler>();
         return AuthModes.UseAuth0Organizations(configuration)
             ? services.AddAuth0AccessTokenAuthentication(configuration)
             : services.AddBrokerJwtAuthentication(configuration);

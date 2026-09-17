@@ -1,15 +1,18 @@
 using Broker.Hosting.Audit;
 using Origination.Domain.Outbox;
+using Origination.Infrastructure.Persistence;
 
 namespace Origination.Infrastructure.Messaging;
 
 public sealed class OutboxAuditRecorder : IAuditRecorder
 {
     private readonly IOutbox _outbox;
+    private readonly OriginationDbContext _context;
 
-    public OutboxAuditRecorder(IOutbox outbox)
+    public OutboxAuditRecorder(IOutbox outbox, OriginationDbContext context)
     {
         _outbox = outbox;
+        _context = context;
     }
 
     public void Record(AuditEvent auditEvent)
@@ -29,4 +32,7 @@ public sealed class OutboxAuditRecorder : IAuditRecorder
             OccurredAt = auditEvent.OccurredAt,
         });
     }
+
+    public Task Flush(CancellationToken cancellationToken = default) =>
+        _context.SaveChangesAsync(cancellationToken);
 }
