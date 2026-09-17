@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Origination.Domain\Origination.Domain.csproj" />
+    <ProjectReference Include="..\..\Shared\Broker.Hosting\Broker.Hosting.csproj" />
   </ItemGroup>
 
   <ItemGroup>

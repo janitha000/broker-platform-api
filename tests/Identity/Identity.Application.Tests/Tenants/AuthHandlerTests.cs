@@ -5,6 +5,7 @@ using Identity.Application.Tenants.RegisterTenant;
 using Identity.Domain.Registration;
 using Identity.Domain.Tenants;
 using Microsoft.Extensions.Options;
+using Broker.Hosting.Audit;
 
 namespace Identity.Application.Tests.Tenants;
 
@@ -36,7 +37,8 @@ public sealed class AuthHandlerTests
             payment ?? new StubPaymentGateway(PaymentChargeStatus.Succeeded),
             auth0 ?? new StubAuth0UserDirectory(Auth0ProvisionKind.Succeeded, "auth0|1"),
             organizations ?? new StubAuth0OrganizationDirectory(),
-            Options.Create(auth ?? new AuthOptions { Mode = AuthOptions.IdentityJwt }));
+            Options.Create(auth ?? new AuthOptions { Mode = AuthOptions.IdentityJwt }),
+            new NoopAuditRecorder());
 
     [Fact]
     public async Task Register_CreatesTenantAndUser_AndReturnsToken()
@@ -457,4 +459,11 @@ file sealed class InMemoryBrokerUserRepository : IBrokerUserRepository
         _users[brokerUser.Id] = brokerUser;
         return Task.CompletedTask;
     }
+}
+
+file sealed class NoopAuditRecorder : IAuditRecorder
+{
+    public void Record(AuditEvent auditEvent) { }
+
+    public Task Flush(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }

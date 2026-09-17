@@ -3,6 +3,7 @@ using Origination.Application.Cases.CreateCase;
 using Origination.Application.Cases.GetCase;
 using Origination.Domain.Abstractions;
 using Origination.Domain.Cases;
+using Broker.Hosting.Audit;
 
 namespace Origination.Application.Tests.Cases;
 
@@ -40,7 +41,11 @@ public sealed class GetCaseHandlerTests
         var created = await new CreateCaseHandler(repository, new StubCurrentBroker(Guid.NewGuid(), tenantA), new InMemoryUnitOfWork())
             .Handle(new CreateCaseCommand("notes"));
 
-        var result = await new GetCaseHandler(repository, new StubCurrentBroker(Guid.NewGuid(), tenantB))
+        var result = await new GetCaseHandler(
+                repository,
+                new StubCurrentBroker(Guid.NewGuid(), tenantB),
+                new InMemoryUnitOfWork(),
+                new NoopAuditRecorder())
             .Handle(new GetCaseQuery(created.CaseId));
 
         Assert.Null(result);
@@ -50,6 +55,13 @@ public sealed class GetCaseHandlerTests
 file sealed class InMemoryUnitOfWork : IUnitOfWork
 {
     public Task SaveChanges(CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+file sealed class NoopAuditRecorder : IAuditRecorder
+{
+    public void Record(AuditEvent auditEvent) { }
+
+    public Task Flush(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 
 file sealed class StubCurrentBroker(

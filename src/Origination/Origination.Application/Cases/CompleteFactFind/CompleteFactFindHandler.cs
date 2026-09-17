@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Broker.Hosting.Audit;
 using Origination.Application.Abstractions;
 using Origination.Application.Auth;
 using Origination.Domain.Abstractions;
@@ -13,17 +14,20 @@ public sealed class CompleteFactFindHandler
     private readonly ICurrentBroker _currentBroker;
     private readonly IOutbox _outbox;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditRecorder _audit;
 
     public CompleteFactFindHandler(
         ICaseRepository caseRepository,
         ICurrentBroker currentBroker,
         IOutbox outbox,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditRecorder audit)
     {
         _caseRepository = caseRepository;
         _currentBroker = currentBroker;
         _outbox = outbox;
         _unitOfWork = unitOfWork;
+        _audit = audit;
     }
 
     public async Task<CompleteFactFindOutcome> Handle(
@@ -38,7 +42,11 @@ public sealed class CompleteFactFindHandler
         var canOwn = _currentBroker.HasPermission(CasePermissions.FactFind)
             && @case.BrokerId == _currentBroker.BrokerId;
         if (!canAny && !canOwn)
+        {
+            RecordCaseAudit(@case, AuditActions.CaseFactFindComplete, AuditOutcomes.Deny);
+            await _unitOfWork.SaveChanges(cancellationToken);
             return new CompleteFactFindOutcome(CompleteFactFindKind.Forbidden, null);
+        }
 
         @case.FactFind = new FactFind
         {
@@ -79,9 +87,31 @@ public sealed class CompleteFactFindHandler
             });
         }
 
+        RecordCaseAudit(@case, AuditActions.CaseFactFindComplete, AuditOutcomes.Allow);
         await _unitOfWork.SaveChanges(cancellationToken);
         return new CompleteFactFindOutcome(
             CompleteFactFindKind.Succeeded,
             new CompleteFactFindResult(@case.Id, @case.Status));
     }
+
+    private void RecordCaseAudit(Case @case, string action, string outcome) =>
+        _audit.Record(new AuditEvent
+        {
+            EventId = Guid.NewGuid(),
+            OccurredAt = DateTime.UtcNow,
+            TenantId = @case.TenantId,
+            Action = action,
+            Outcome = outcome,
+            Actor = new AuditActor
+            {
+                Type = AuditActorTypes.User,
+                BrokerId = _currentBroker.BrokerId,
+            },
+            Resource = new AuditResource
+            {
+                Type = AuditResourceTypes.Case,
+                Id = @case.Id.ToString("D"),
+                CaseId = @case.Id,
+            },
+        });
 }

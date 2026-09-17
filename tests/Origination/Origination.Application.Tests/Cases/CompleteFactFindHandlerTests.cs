@@ -4,6 +4,7 @@ using Origination.Application.Cases.CompleteFactFind;
 using Origination.Domain.Abstractions;
 using Origination.Domain.Cases;
 using Origination.Domain.Outbox;
+using Broker.Hosting.Audit;
 
 namespace Origination.Application.Tests.Cases;
 
@@ -29,7 +30,8 @@ public sealed class CompleteFactFindHandlerTests
             repository,
             new StubCurrentBroker(Guid.NewGuid(), tenantId, CasePermissions.FactFindAny),
             outbox,
-            new InMemoryUnitOfWork());
+            new InMemoryUnitOfWork(),
+            new NoopAuditRecorder());
         var outcome = await handler.Handle(new CompleteFactFindCommand(
             caseId,
             "Buy first home",
@@ -75,7 +77,8 @@ public sealed class CompleteFactFindHandlerTests
             repository,
             new StubCurrentBroker(Guid.NewGuid(), tenantId, CasePermissions.FactFindAny),
             outbox,
-            new InMemoryUnitOfWork());
+            new InMemoryUnitOfWork(),
+            new NoopAuditRecorder());
         var command = new CompleteFactFindCommand(caseId, "Buy first home", 1m, 1m, 1m, 1m);
 
         await handler.Handle(command);
@@ -91,7 +94,8 @@ public sealed class CompleteFactFindHandlerTests
             new InMemoryFactFindCaseRepository(),
             new StubCurrentBroker(Guid.NewGuid(), Guid.NewGuid(), CasePermissions.FactFindAny),
             new InMemoryOutbox(),
-            new InMemoryUnitOfWork());
+            new InMemoryUnitOfWork(),
+            new NoopAuditRecorder());
 
         var outcome = await handler.Handle(new CompleteFactFindCommand(
             Guid.NewGuid(),
@@ -121,7 +125,8 @@ public sealed class CompleteFactFindHandlerTests
             repository,
             new StubCurrentBroker(assistantId, tenantId, CasePermissions.FactFind),
             new InMemoryOutbox(),
-            new InMemoryUnitOfWork())
+            new InMemoryUnitOfWork(),
+            new NoopAuditRecorder())
             .Handle(new CompleteFactFindCommand(caseId, "x", 1m, 1m, 1m, 1m));
 
         Assert.Equal(CompleteFactFindKind.Succeeded, outcome.Kind);
@@ -146,7 +151,8 @@ public sealed class CompleteFactFindHandlerTests
             repository,
             new StubCurrentBroker(Guid.NewGuid(), tenantId, CasePermissions.FactFind),
             new InMemoryOutbox(),
-            new InMemoryUnitOfWork())
+            new InMemoryUnitOfWork(),
+            new NoopAuditRecorder())
             .Handle(new CompleteFactFindCommand(caseId, "x", 1m, 1m, 1m, 1m));
 
         Assert.Equal(CompleteFactFindKind.Forbidden, outcome.Kind);
@@ -171,6 +177,13 @@ file sealed class StubCurrentBroker(
 file sealed class InMemoryUnitOfWork : IUnitOfWork
 {
     public Task SaveChanges(CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+file sealed class NoopAuditRecorder : IAuditRecorder
+{
+    public void Record(AuditEvent auditEvent) { }
+
+    public Task Flush(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 
 file sealed class InMemoryOutbox : IOutbox

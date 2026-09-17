@@ -1,3 +1,4 @@
+using Broker.Hosting.Audit;
 using Document.Application.Abstractions;
 using Document.Application.Auth;
 using Document.Domain.Abstractions;
@@ -10,23 +11,23 @@ public sealed class RequestDocumentDownloadHandler
     private static readonly TimeSpan DownloadTtl = TimeSpan.FromMinutes(2);
 
     private readonly ICaseDocumentRepository _documents;
-    private readonly IDocumentAccessLogRepository _accessLogs;
     private readonly IObjectStore _objectStore;
     private readonly ICurrentBroker _currentBroker;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditRecorder _audit;
 
     public RequestDocumentDownloadHandler(
         ICaseDocumentRepository documents,
-        IDocumentAccessLogRepository accessLogs,
         IObjectStore objectStore,
         ICurrentBroker currentBroker,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditRecorder audit)
     {
         _documents = documents;
-        _accessLogs = accessLogs;
         _objectStore = objectStore;
         _currentBroker = currentBroker;
         _unitOfWork = unitOfWork;
+        _audit = audit;
     }
 
     public async Task<RequestDocumentDownloadOutcome> Handle(
@@ -43,7 +44,15 @@ public sealed class RequestDocumentDownloadHandler
 
         var canReadSensitive = _currentBroker.HasPermission(DocumentPermissions.SensitiveRead);
         if (document.Sensitivity == DocumentSensitivity.Sensitive && !canReadSensitive)
+        {
+            _audit.Record(DocumentAudit.For(
+                document,
+                _currentBroker.BrokerId,
+                AuditActions.DocumentDownloadUrlIssued,
+                AuditOutcomes.Deny));
+            await _unitOfWork.SaveChanges(cancellationToken);
             return new RequestDocumentDownloadOutcome(RequestDocumentDownloadKind.Forbidden, null, null);
+        }
 
         if (document.Status != DocumentStatus.Clean || string.IsNullOrEmpty(document.CleanKey))
         {
@@ -54,9 +63,8 @@ public sealed class RequestDocumentDownloadHandler
         }
 
         var grant = _objectStore.CreateDownloadGrant(document.CleanKey, DownloadTtl);
-        await _accessLogs.Add(
-            DocumentAccess.Log(document, _currentBroker.BrokerId, DocumentAccessAction.DownloadUrlIssued),
-            cancellationToken);
+        _audit.Record(DocumentAudit.For(
+            document, _currentBroker.BrokerId, AuditActions.DocumentDownloadUrlIssued));
         await _unitOfWork.SaveChanges(cancellationToken);
 
         return new RequestDocumentDownloadOutcome(

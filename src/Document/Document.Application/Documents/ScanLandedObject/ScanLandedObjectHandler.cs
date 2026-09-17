@@ -1,3 +1,4 @@
+using Broker.Hosting.Audit;
 using Document.Application.Abstractions;
 using Document.Domain.Abstractions;
 using Document.Domain.Documents;
@@ -7,23 +8,23 @@ namespace Document.Application.Documents.ScanLandedObject;
 public sealed class ScanLandedObjectHandler
 {
     private readonly ICaseDocumentRepository _documents;
-    private readonly IDocumentAccessLogRepository _accessLogs;
     private readonly IObjectStore _objectStore;
     private readonly IMalwareScanner _scanner;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditRecorder _audit;
 
     public ScanLandedObjectHandler(
         ICaseDocumentRepository documents,
-        IDocumentAccessLogRepository accessLogs,
         IObjectStore objectStore,
         IMalwareScanner scanner,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditRecorder audit)
     {
         _documents = documents;
-        _accessLogs = accessLogs;
         _objectStore = objectStore;
         _scanner = scanner;
         _unitOfWork = unitOfWork;
+        _audit = audit;
     }
 
     public async Task Handle(string landingKey, CancellationToken cancellationToken = default)
@@ -59,26 +60,28 @@ public sealed class ScanLandedObjectHandler
                 document.CleanKey,
                 cancellationToken);
             document.Status = DocumentStatus.Clean;
-            await _accessLogs.Add(
-                DocumentAccess.Log(document, null, DocumentAccessAction.ScanSucceeded),
-                cancellationToken);
+            _audit.Record(DocumentAudit.For(
+                document, null, AuditActions.DocumentScanSucceeded,
+                actorType: AuditActorTypes.Worker));
         }
         else if (result.Verdict == ScanVerdict.Threat)
         {
             await _objectStore.MoveToQuarantine(document.LandingKey, cancellationToken);
             document.Status = DocumentStatus.Quarantined;
             document.RejectionReason = result.Reason;
-            await _accessLogs.Add(
-                DocumentAccess.Log(document, null, DocumentAccessAction.Quarantined, result.Reason),
-                cancellationToken);
+            _audit.Record(DocumentAudit.For(
+                document, null, AuditActions.DocumentQuarantined,
+                actorType: AuditActorTypes.Worker,
+                detail: result.Reason));
         }
         else
         {
             document.Status = DocumentStatus.Rejected;
             document.RejectionReason = result.Reason;
-            await _accessLogs.Add(
-                DocumentAccess.Log(document, null, DocumentAccessAction.ScanRejected, result.Reason),
-                cancellationToken);
+            _audit.Record(DocumentAudit.For(
+                document, null, AuditActions.DocumentScanRejected,
+                actorType: AuditActorTypes.Worker,
+                detail: result.Reason));
         }
 
         await _documents.Update(document, cancellationToken);

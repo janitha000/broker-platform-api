@@ -1,3 +1,4 @@
+using Broker.Hosting.Audit;
 using Document.Application.Abstractions;
 using Document.Domain.Abstractions;
 using Document.Domain.Documents;
@@ -9,23 +10,23 @@ public sealed class CreateDocumentUploadHandler
     private static readonly TimeSpan UploadTtl = TimeSpan.FromMinutes(10);
 
     private readonly ICaseDocumentRepository _documents;
-    private readonly IDocumentAccessLogRepository _accessLogs;
     private readonly IObjectStore _objectStore;
     private readonly ICurrentBroker _currentBroker;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditRecorder _audit;
 
     public CreateDocumentUploadHandler(
         ICaseDocumentRepository documents,
-        IDocumentAccessLogRepository accessLogs,
         IObjectStore objectStore,
         ICurrentBroker currentBroker,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditRecorder audit)
     {
         _documents = documents;
-        _accessLogs = accessLogs;
         _objectStore = objectStore;
         _currentBroker = currentBroker;
         _unitOfWork = unitOfWork;
+        _audit = audit;
     }
 
     public async Task<CreateDocumentUploadOutcome> Handle(
@@ -94,9 +95,7 @@ public sealed class CreateDocumentUploadHandler
         };
 
         await _documents.Add(document, cancellationToken);
-        await _accessLogs.Add(
-            DocumentAccess.Log(document, _currentBroker.BrokerId, DocumentAccessAction.UploadUrlIssued),
-            cancellationToken);
+        _audit.Record(DocumentAudit.For(document, _currentBroker.BrokerId, AuditActions.DocumentUploadUrlIssued));
         await _unitOfWork.SaveChanges(cancellationToken);
 
         var grant = _objectStore.CreateUploadGrant(document.Id, document.TenantId, UploadTtl);

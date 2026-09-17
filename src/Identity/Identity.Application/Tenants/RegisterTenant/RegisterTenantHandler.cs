@@ -1,3 +1,4 @@
+using Broker.Hosting.Audit;
 using Identity.Application.Abstractions;
 using Identity.Domain.Registration;
 using Identity.Domain.Tenants;
@@ -16,6 +17,7 @@ public sealed class RegisterTenantHandler
     private readonly IAuth0UserDirectory _auth0UserDirectory;
     private readonly IAuth0OrganizationDirectory _auth0Organizations;
     private readonly AuthOptions _auth;
+    private readonly IAuditRecorder _audit;
 
     public RegisterTenantHandler(
         ITenantRepository tenantRepository,
@@ -26,7 +28,8 @@ public sealed class RegisterTenantHandler
         IPaymentGateway paymentGateway,
         IAuth0UserDirectory auth0UserDirectory,
         IAuth0OrganizationDirectory auth0Organizations,
-        IOptions<AuthOptions> auth)
+        IOptions<AuthOptions> auth,
+        IAuditRecorder audit)
     {
         _tenantRepository = tenantRepository;
         _brokerUserRepository = brokerUserRepository;
@@ -37,6 +40,7 @@ public sealed class RegisterTenantHandler
         _auth0UserDirectory = auth0UserDirectory;
         _auth0Organizations = auth0Organizations;
         _auth = auth.Value;
+        _audit = audit;
     }
 
     public async Task<RegisterTenantOutcome> Handle(
@@ -191,12 +195,37 @@ public sealed class RegisterTenantHandler
         user.Auth0UserId = provision.UserId;
         await _brokerUserRepository.Update(user, cancellationToken);
 
+        var justCompleted = false;
         if (saga is not null)
         {
             saga.Auth0UserId = provision.UserId;
+            justCompleted = saga.Status != RegistrationSagaStatus.Completed;
             saga.Status = RegistrationSagaStatus.Completed;
             saga.CompletedAt = DateTime.UtcNow;
             await _sagas.Update(saga, cancellationToken);
+        }
+
+        if (justCompleted)
+        {
+            _audit.Record(new AuditEvent
+            {
+                EventId = Guid.NewGuid(),
+                OccurredAt = DateTime.UtcNow,
+                TenantId = user.TenantId,
+                Action = AuditActions.IdentityTenantRegistered,
+                Outcome = AuditOutcomes.Allow,
+                Actor = new AuditActor
+                {
+                    Type = AuditActorTypes.User,
+                    BrokerId = user.Id,
+                },
+                Resource = new AuditResource
+                {
+                    Type = AuditResourceTypes.Tenant,
+                    Id = user.TenantId.ToString("D"),
+                },
+            });
+            await _audit.Flush(cancellationToken);
         }
 
         var accessToken = _tokenIssuer.Issue(user.Id, user.TenantId, user.Email, user.Role);

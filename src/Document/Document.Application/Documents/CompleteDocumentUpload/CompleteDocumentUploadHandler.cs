@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Broker.Hosting.Audit;
 using Document.Application.Abstractions;
 using Document.Application.Auth;
 using Document.Domain.Abstractions;
@@ -9,23 +10,23 @@ namespace Document.Application.Documents.CompleteDocumentUpload;
 public sealed class CompleteDocumentUploadHandler
 {
     private readonly ICaseDocumentRepository _documents;
-    private readonly IDocumentAccessLogRepository _accessLogs;
     private readonly IObjectStore _objectStore;
     private readonly ICurrentBroker _currentBroker;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditRecorder _audit;
 
     public CompleteDocumentUploadHandler(
         ICaseDocumentRepository documents,
-        IDocumentAccessLogRepository accessLogs,
         IObjectStore objectStore,
         ICurrentBroker currentBroker,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditRecorder audit)
     {
         _documents = documents;
-        _accessLogs = accessLogs;
         _objectStore = objectStore;
         _currentBroker = currentBroker;
         _unitOfWork = unitOfWork;
+        _audit = audit;
     }
 
     public async Task<CompleteDocumentUploadOutcome> Handle(
@@ -77,9 +78,8 @@ public sealed class CompleteDocumentUploadHandler
         document.Status = DocumentStatus.PendingScan;
         document.UploadedAt = DateTime.UtcNow;
         await _documents.Update(document, cancellationToken);
-        await _accessLogs.Add(
-            DocumentAccess.Log(document, _currentBroker.BrokerId, DocumentAccessAction.UploadCompleted),
-            cancellationToken);
+        _audit.Record(DocumentAudit.For(
+            document, _currentBroker.BrokerId, AuditActions.DocumentUploadCompleted));
         await _unitOfWork.SaveChanges(cancellationToken);
 
         var canReadSensitive = _currentBroker.HasPermission(DocumentPermissions.SensitiveRead);
