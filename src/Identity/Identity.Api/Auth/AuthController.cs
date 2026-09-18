@@ -191,7 +191,7 @@ public sealed class AuthController : ControllerBase
             || string.IsNullOrEmpty(email))
             return Unauthorized();
 
-        return Ok(ToUser(tenant, broker, email, role ?? string.Empty));
+        return Ok(ToUser(tenant, broker, email, role ?? string.Empty, ReadPermissions(User)));
     }
 
     [AllowAnonymous]
@@ -263,6 +263,26 @@ public sealed class AuthController : ControllerBase
         return returnUrl;
     }
 
-    private static AuthUserResponse ToUser(Guid tenantId, Guid brokerId, string email, string role) =>
-        new(tenantId, brokerId, email, role);
+    private static AuthUserResponse ToUser(
+        Guid tenantId,
+        Guid brokerId,
+        string email,
+        string role,
+        IReadOnlyList<string>? permissions = null) =>
+        new(
+            tenantId,
+            brokerId,
+            email,
+            role,
+            permissions ?? BrokerPermissions.ForRole(role));
+
+    private static IReadOnlyList<string> ReadPermissions(ClaimsPrincipal user)
+    {
+        var fromClaims = user.FindAll(BrokerPermissions.ClaimType).Select(c => c.Value);
+        var scope = user.FindFirst("scope")?.Value;
+        var fromScope = string.IsNullOrEmpty(scope)
+            ? []
+            : scope.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return fromClaims.Concat(fromScope).Distinct(StringComparer.Ordinal).ToList();
+    }
 }
