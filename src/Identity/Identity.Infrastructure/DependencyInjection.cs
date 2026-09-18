@@ -41,6 +41,7 @@ public static class DependencyInjection
             services.AddSingleton<IMessageBus, LoggingMessageBus>();
 
         services.AddHostedService<OutboxPublisher>();
+        services.AddHostedService<Auth0AuditPermissionBootstrap>();
 
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("Identity")));

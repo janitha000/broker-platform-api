@@ -1,10 +1,10 @@
-resource "aws_cloudwatch_log_group" "document" {
-  name              = "/ecs/document-api"
+resource "aws_cloudwatch_log_group" "audit" {
+  name              = "/ecs/audit-api"
   retention_in_days = 7
 }
 
-resource "aws_ecs_task_definition" "document" {
-  family                   = "document-api"
+resource "aws_ecs_task_definition" "audit" {
+  family                   = "audit-api"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "512"
@@ -19,7 +19,7 @@ resource "aws_ecs_task_definition" "document" {
 
   container_definitions = jsonencode([{
     name      = "api"
-    image     = "${aws_ecr_repository.document.repository_url}:latest"
+    image     = "${aws_ecr_repository.audit.repository_url}:latest"
     essential = true
     portMappings = [{
       name          = "http"
@@ -53,65 +53,45 @@ resource "aws_ecs_task_definition" "document" {
         value = "https://api.broker-platform.com"
       },
       {
-        name  = "Storage__AwsRegion"
-        value = var.aws_region
-      },
-      {
-        name  = "Storage__LandingBucket"
-        value = aws_s3_bucket.document_landing.id
-      },
-      {
-        name  = "Storage__CleanBucket"
-        value = aws_s3_bucket.document_clean.id
-      },
-      {
-        name  = "Storage__QuarantineBucket"
-        value = aws_s3_bucket.document_quarantine.id
-      },
-      {
         name  = "Messaging__QueueUrl"
-        value = aws_sqs_queue.document_landing.url
+        value = aws_sqs_queue.audit_events.url
       },
       {
         name  = "Messaging__AwsRegion"
         value = var.aws_region
       },
       {
-        name  = "Messaging__Provider"
-        value = "EventBridge"
+        name  = "Archive__AwsRegion"
+        value = var.aws_region
       },
       {
-        name  = "Messaging__EventBusName"
-        value = aws_cloudwatch_event_bus.broker.name
-      },
-      {
-        name  = "Messaging__Source"
-        value = "document.broker-platform"
+        name  = "Archive__Bucket"
+        value = aws_s3_bucket.audit_archive.id
       }
     ]
     secrets = [
       {
-        name      = "ConnectionStrings__Document"
-        valueFrom = aws_secretsmanager_secret.document_sql.arn
+        name      = "ConnectionStrings__Audit"
+        valueFrom = aws_secretsmanager_secret.audit_sql.arn
       }
     ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        awslogs-group         = aws_cloudwatch_log_group.document.name
+        awslogs-group         = aws_cloudwatch_log_group.audit.name
         awslogs-region        = var.aws_region
         awslogs-stream-prefix = "ecs"
       }
     }
   }])
 
-  depends_on = [aws_secretsmanager_secret_version.document_sql]
+  depends_on = [aws_secretsmanager_secret_version.audit_sql]
 }
 
-resource "aws_ecs_service" "document" {
-  name            = "document-api"
+resource "aws_ecs_service" "audit" {
+  name            = "audit-api"
   cluster         = aws_ecs_cluster.this.id
-  task_definition = aws_ecs_task_definition.document.arn
+  task_definition = aws_ecs_task_definition.audit.arn
   desired_count   = var.ecs_desired_count
   launch_type     = "FARGATE"
 
@@ -119,15 +99,15 @@ resource "aws_ecs_service" "document" {
 
   network_configuration {
     subnets          = module.vpc.public_subnets
-    security_groups  = [aws_security_group.document.id]
+    security_groups  = [aws_security_group.audit.id]
     assign_public_ip = true
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.document.arn
+    target_group_arn = aws_lb_target_group.audit.arn
     container_name   = "api"
     container_port   = 8080
   }
 
-  depends_on = [aws_lb_listener_rule.document_api]
+  depends_on = [aws_lb_listener_rule.audit_api]
 }

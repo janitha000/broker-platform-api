@@ -1,4 +1,7 @@
 using Broker.Hosting;
+using Audit.Api.Auth;
+using Audit.Application.Abstractions;
+using Audit.Application.Auth;
 
 namespace Audit.Api.Configuration;
 
@@ -11,8 +14,16 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
         services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentBroker, JwtCurrentBroker>();
+
         services.AddBrokerSessionAuthentication(configuration);
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(
+                AuditAuth.ReadPolicy,
+                policy => policy.RequireAssertion(ctx =>
+                    AuditAuth.HasPermission(ctx.User, AuditPermissions.Read)));
+        });
         services.AddControllers();
         services.AddCorsFromConfiguration(configuration);
         return services;

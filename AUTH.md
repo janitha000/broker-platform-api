@@ -26,9 +26,9 @@ Keep the existing six Auth0 artefacts. Then:
 
 1. Enable **Organizations** on the tenant. Regular Web App → Login Experience → **Business Users**.
 2. Broker Platform API → enable **RBAC** and **Add Permissions in the Access Token**. Enable Organizations on that API.
-3. Permissions (same strings as `BrokerPermissions`): `cases:read`, `cases:create`, `cases:fact-find`, `cases:fact-find-any`, `cases:lodge`, `cases:settle`.
-4. Roles `Principal`, `Assistant`, `ReadOnly` with the same matrix as IdentityJwt. Optional config `Auth0:PrincipalRoleId` if lookup by name fails.
-5. Management M2M: add `create:organizations`, `create:organization_connections`, `create:organization_members`, `create:organization_member_roles`, `read:roles`, `read:connections` (plus existing `create:users` / `read:users`).
+3. Permissions (same strings as `BrokerPermissions`): `cases:read`, `cases:create`, `cases:fact-find`, `cases:fact-find-any`, `cases:lodge`, `cases:settle`, `documents:read`, `documents:upload`, `documents:sensitive-read`, `audit:read` (Principal only).
+4. Roles `Principal`, `Assistant`, `ReadOnly` with the same matrix as IdentityJwt. Optional config `Auth0:PrincipalRoleId` if lookup by name fails. Identity also PATCHes `audit:read` onto the Broker Platform API and grants it to `Principal` on startup (needs `read:resource_servers`, `update:resource_servers`, `update:roles`).
+5. Management M2M: add `create:organizations`, `create:organization_connections`, `create:organization_members`, `create:organization_member_roles`, `read:roles`, `read:connections`, `read:resource_servers`, `update:resource_servers`, `update:roles` (plus existing `create:users` / `read:users`).
 6. Enable the database connection for each org (Identity does this via Management API after create).
 7. Post-login **Action** on the Regular Web App (Login / Post Login) so Origination can keep Guid columns:
 

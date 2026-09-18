@@ -129,3 +129,19 @@ output "document_landing_queue_url" {
 output "document_sql_secret_arn" {
   value = aws_secretsmanager_secret.document_sql.arn
 }
+
+output "audit_ecr_repository_url" {
+  value = aws_ecr_repository.audit.repository_url
+}
+
+output "audit_queue_url" {
+  value = aws_sqs_queue.audit_events.url
+}
+
+output "audit_archive_bucket" {
+  value = aws_s3_bucket.audit_archive.id
+}
+
+output "audit_sql_secret_arn" {
+  value = aws_secretsmanager_secret.audit_sql.arn
+}

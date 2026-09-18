@@ -77,6 +77,22 @@ resource "aws_ecs_task_definition" "identity" {
         name  = "Auth0__PaymentClientId"
         value = "j1It4SAqOep8m3tf0Pd5k10wqn77uRgo"
       },
+      {
+        name  = "Messaging__Provider"
+        value = "EventBridge"
+      },
+      {
+        name  = "Messaging__EventBusName"
+        value = aws_cloudwatch_event_bus.broker.name
+      },
+      {
+        name  = "Messaging__Source"
+        value = "identity.broker-platform"
+      },
+      {
+        name  = "Messaging__AwsRegion"
+        value = var.aws_region
+      },
     ]
     secrets = [
       {

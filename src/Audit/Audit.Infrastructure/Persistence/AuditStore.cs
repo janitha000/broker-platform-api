@@ -48,6 +48,36 @@ public sealed class AuditStore : IAuditStore
         return record;
     }
 
+    public async Task<IReadOnlyList<AuditEventRecord>> List(
+        Guid tenantId,
+        DateTime? fromUtc,
+        DateTime? toUtc,
+        Guid? caseId,
+        string? action,
+        string? outcome,
+        int take,
+        CancellationToken ct)
+    {
+        var query = _db.AuditEvents.AsNoTracking().Where(e => e.TenantId == tenantId);
+
+        if (fromUtc is DateTime from)
+            query = query.Where(e => e.OccurredAt >= from);
+        if (toUtc is DateTime to)
+            query = query.Where(e => e.OccurredAt <= to);
+        if (caseId is Guid id)
+            query = query.Where(e => e.CaseId == id);
+        if (!string.IsNullOrEmpty(action))
+            query = query.Where(e => e.Action == action);
+        if (!string.IsNullOrEmpty(outcome))
+            query = query.Where(e => e.Outcome == outcome);
+
+        return await query
+            .OrderByDescending(e => e.OccurredAt)
+            .ThenByDescending(e => e.EventId)
+            .Take(take)
+            .ToListAsync(ct);
+    }
+
     public async Task MarkArchived(Guid eventId, CancellationToken ct)
     {
         var row = await _db.AuditEvents.FirstAsync(e => e.EventId == eventId, ct);

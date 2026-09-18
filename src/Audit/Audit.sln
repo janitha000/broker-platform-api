@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audit.Infrastructure", "Aud
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audit.Api", "Audit.Api\Audit.Api.csproj", "{5B132EA0-4481-4FF3-8CC8-DE40F306579A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audit.Application.Tests", "..\..\tests\Audit\Audit.Application.Tests\Audit.Application.Tests.csproj", "{EE730431-B863-4F9C-8C96-2DBD2A49B88B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{5B132EA0-4481-4FF3-8CC8-DE40F306579A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5B132EA0-4481-4FF3-8CC8-DE40F306579A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5B132EA0-4481-4FF3-8CC8-DE40F306579A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE730431-B863-4F9C-8C96-2DBD2A49B88B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE730431-B863-4F9C-8C96-2DBD2A49B88B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE730431-B863-4F9C-8C96-2DBD2A49B88B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE730431-B863-4F9C-8C96-2DBD2A49B88B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

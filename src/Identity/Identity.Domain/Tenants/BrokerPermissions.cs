@@ -11,6 +11,7 @@ public static class BrokerPermissions
     public const string DocumentsRead = "documents:read";
     public const string DocumentsUpload = "documents:upload";
     public const string DocumentsSensitiveRead = "documents:sensitive-read";
+    public const string AuditRead = "audit:read";
 
     public const string ClaimType = "permissions";
     public const string RoleClaimType = "role";
@@ -28,6 +29,7 @@ public static class BrokerPermissions
             DocumentsRead,
             DocumentsUpload,
             DocumentsSensitiveRead,
+            AuditRead,
         ],
         BrokerRole.Assistant =>
         [

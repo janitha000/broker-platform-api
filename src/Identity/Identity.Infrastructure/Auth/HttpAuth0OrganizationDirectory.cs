@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Identity.Application.Abstractions;
+using Identity.Domain.Tenants;
 using Microsoft.Extensions.Options;
 
 namespace Identity.Infrastructure.Auth;
@@ -103,7 +104,11 @@ public sealed class HttpAuth0OrganizationDirectory : IAuth0OrganizationDirectory
             roles.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             roles.Content = JsonContent.Create(new { roles = new[] { roleId } });
             using var rolesResponse = await _http.SendAsync(roles, cancellationToken);
-            return rolesResponse.IsSuccessStatusCode;
+            if (!rolesResponse.IsSuccessStatusCode)
+                return false;
+
+            await EnsureAuditReadPermission(cancellationToken);
+            return true;
         }
         catch (HttpRequestException)
         {
@@ -113,6 +118,86 @@ public sealed class HttpAuth0OrganizationDirectory : IAuth0OrganizationDirectory
         {
             return false;
         }
+    }
+
+    public async Task EnsureAuditReadPermission(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var token = await GetManagementToken(cancellationToken);
+            if (token is null)
+                return;
+
+            await EnsureApiScope(token, cancellationToken);
+            var roleId = await ResolvePrincipalRoleId(token, cancellationToken);
+            if (string.IsNullOrWhiteSpace(roleId))
+                return;
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"api/v2/roles/{Uri.EscapeDataString(roleId)}/permissions");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(new
+            {
+                permissions = new[]
+                {
+                    new
+                    {
+                        resource_server_identifier = _options.Audience,
+                        permission_name = BrokerPermissions.AuditRead,
+                    },
+                },
+            });
+            using var response = await _http.SendAsync(request, cancellationToken);
+            _ = response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException)
+        {
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private async Task EnsureApiScope(string token, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_options.Audience))
+            return;
+
+        var identifier = Uri.EscapeDataString(_options.Audience);
+        using var get = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"api/v2/resource-servers?identifier={identifier}");
+        get.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using var getResponse = await _http.SendAsync(get, cancellationToken);
+        if (!getResponse.IsSuccessStatusCode)
+            return;
+
+        var servers = await getResponse.Content.ReadFromJsonAsync<ResourceServerResponse[]>(Json, cancellationToken);
+        var server = servers?.FirstOrDefault();
+        if (server?.Id is null)
+            return;
+
+        var scopes = server.Scopes?.ToList() ?? [];
+        if (scopes.Any(s => string.Equals(s.Value, BrokerPermissions.AuditRead, StringComparison.Ordinal)))
+            return;
+
+        scopes.Add(new ScopeResponse
+        {
+            Value = BrokerPermissions.AuditRead,
+            Description = "Read tenant audit timeline",
+        });
+
+        using var patch = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"api/v2/resource-servers/{Uri.EscapeDataString(server.Id)}");
+        patch.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        patch.Content = JsonContent.Create(new
+        {
+            scopes = scopes.Select(s => new { value = s.Value, description = s.Description }),
+        });
+        using var patchResponse = await _http.SendAsync(patch, cancellationToken);
+        _ = patchResponse.IsSuccessStatusCode;
     }
 
     private async Task<bool> EnableDatabaseConnection(
@@ -199,5 +284,23 @@ public sealed class HttpAuth0OrganizationDirectory : IAuth0OrganizationDirectory
 
         [JsonPropertyName("name")]
         public string? Name { get; set; }
+    }
+
+    private sealed class ResourceServerResponse
+    {
+        [JsonPropertyName("id")]
+        public string? Id { get; set; }
+
+        [JsonPropertyName("scopes")]
+        public ScopeResponse[]? Scopes { get; set; }
+    }
+
+    private sealed class ScopeResponse
+    {
+        [JsonPropertyName("value")]
+        public string? Value { get; set; }
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
     }
 }

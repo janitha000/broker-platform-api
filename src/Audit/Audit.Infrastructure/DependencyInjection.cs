@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddSingleton<IAmazonS3>(_ =>
             new AmazonS3Client(RegionEndpoint.GetBySystemName(region)));
         services.AddSingleton<IAuditArchive, S3AuditArchive>();
+        services.AddHostedService<AuditDatabaseInitializer>();
         services.AddHostedService<AuditQueueWorker>();
 
         return services;

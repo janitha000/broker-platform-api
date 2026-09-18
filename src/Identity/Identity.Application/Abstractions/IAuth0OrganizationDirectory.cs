@@ -12,4 +12,6 @@ public interface IAuth0OrganizationDirectory
         string organizationId,
         string auth0UserId,
         CancellationToken cancellationToken = default);
+
+    Task EnsureAuditReadPermission(CancellationToken cancellationToken = default);
 }

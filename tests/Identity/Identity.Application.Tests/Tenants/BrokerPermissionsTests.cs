@@ -20,6 +20,9 @@ public sealed class BrokerPermissionsTests
         Assert.Contains(
             BrokerPermissions.DocumentsSensitiveRead,
             BrokerPermissions.ForRole(BrokerRole.Principal));
+        Assert.Contains(BrokerPermissions.AuditRead, BrokerPermissions.ForRole(BrokerRole.Principal));
+        Assert.DoesNotContain(BrokerPermissions.AuditRead, BrokerPermissions.ForRole(BrokerRole.Assistant));
+        Assert.DoesNotContain(BrokerPermissions.AuditRead, BrokerPermissions.ForRole(BrokerRole.ReadOnly));
         Assert.Empty(BrokerPermissions.ForRole("Nope"));
     }
 }

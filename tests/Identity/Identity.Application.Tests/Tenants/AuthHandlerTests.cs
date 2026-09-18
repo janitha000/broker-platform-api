@@ -326,6 +326,9 @@ file sealed class StubAuth0OrganizationDirectory : IAuth0OrganizationDirectory
         MemberCalls++;
         return Task.FromResult(true);
     }
+
+    public Task EnsureAuditReadPermission(CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }
 
 file sealed class StubAuth0UserDirectory(Auth0ProvisionKind kind, string? userId) : IAuth0UserDirectory

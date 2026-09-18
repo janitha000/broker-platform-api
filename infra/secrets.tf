@@ -58,6 +58,21 @@ resource "aws_secretsmanager_secret_version" "document_sql" {
   ])
 }
 
+resource "aws_secretsmanager_secret" "audit_sql" {
+  name = "audit/dev/sql"
+}
+
+resource "aws_secretsmanager_secret_version" "audit_sql" {
+  secret_id = aws_secretsmanager_secret.audit_sql.id
+  secret_string = join("", [
+    "Server=", aws_db_instance.this.address, ",1433;",
+    "Database=Audit;",
+    "User Id=", var.db_username, ";",
+    "Password=", var.db_password, ";",
+    "TrustServerCertificate=True;Encrypt=True"
+  ])
+}
+
 resource "aws_secretsmanager_secret" "jwt" {
   name = "origination/dev/jwt"
 }
