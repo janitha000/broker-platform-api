@@ -35,16 +35,22 @@ public sealed class CasesController : ControllerBase
 
     [Authorize(Policy = OriginationAuth.CreatePolicy)]
     [HttpPost]
-    public async Task<IActionResult> CreateCase([FromBody] CreateCaseCommand command, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(CreateCaseResult), StatusCodes.Status201Created)]
+    public async Task<ActionResult<CreateCaseResult>> CreateCase(
+        [FromBody] CreateCaseCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await _createCaseHandler.Handle(command, cancellationToken);
         return CreatedAtAction(nameof(Get), new { caseId = result.CaseId }, result);
-
     }
 
     [Authorize(Policy = OriginationAuth.ReadPolicy)]
     [HttpGet("{caseId:guid}")]
-    public async Task<IActionResult> Get(Guid caseId, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(GetCaseResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GetCaseResult>> Get(
+        Guid caseId,
+        CancellationToken cancellationToken = default)
     {
         var result = await _getCaseHandler.Handle(new GetCaseQuery(caseId), cancellationToken);
         if (result is null)
@@ -54,7 +60,13 @@ public sealed class CasesController : ControllerBase
 
     [Authorize(Policy = OriginationAuth.FactFindPolicy)]
     [HttpPut("{caseId:guid}/fact-find")]
-    public async Task<IActionResult> CompleteFactFind(Guid caseId, [FromBody] CompleteFactFindCommand command, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(CompleteFactFindResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<CompleteFactFindResult>> CompleteFactFind(
+        Guid caseId,
+        [FromBody] CompleteFactFindCommand command,
+        CancellationToken cancellationToken = default)
     {
         var outcome = await _completeFactFindHandler.Handle(command with { CaseId = caseId }, cancellationToken);
         return outcome.Kind switch
@@ -68,7 +80,8 @@ public sealed class CasesController : ControllerBase
 
     [Authorize(Policy = OriginationAuth.ReadPolicy)]
     [HttpGet]
-    public async Task<IActionResult> GetCases(CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(GetCasesResult), StatusCodes.Status200OK)]
+    public async Task<ActionResult<GetCasesResult>> GetCases(CancellationToken cancellationToken = default)
     {
         var result = await _getCasesHandler.Handle(new GetCasesQuery(), cancellationToken);
         return Ok(result);
@@ -76,7 +89,9 @@ public sealed class CasesController : ControllerBase
 
     [Authorize(Policy = OriginationAuth.ReadPolicy)]
     [HttpGet("board")]
-    public async Task<IActionResult> GetCasesForBoard(CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(GetCasesForBoardResult), StatusCodes.Status200OK)]
+    public async Task<ActionResult<GetCasesForBoardResult>> GetCasesForBoard(
+        CancellationToken cancellationToken = default)
     {
         var result = await _getCasesForBoardHandler.Handle(new GetCasesForBoardQuery(), cancellationToken);
         return Ok(result);

@@ -1,6 +1,7 @@
 using System.Text;
 using Broker.Hosting.Audit;
 using Broker.Hosting.Auth;
+using Broker.Hosting.OpenApi;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -82,7 +83,11 @@ public static class DependencyInjection
         options ??= new BrokerWebHostOptions();
 
         services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen();
+        services.AddSwaggerGen(swagger =>
+        {
+            swagger.SupportNonNullableReferenceTypes();
+            swagger.SchemaFilter<RequireNonNullablePropertiesSchemaFilter>();
+        });
         services.AddControllers()
             .AddJsonOptions(json =>
                 json.JsonSerializerOptions.Converters.Add(

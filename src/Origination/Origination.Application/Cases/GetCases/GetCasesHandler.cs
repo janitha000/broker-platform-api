@@ -17,6 +17,6 @@ public sealed class GetCasesHandler
     public async Task<GetCasesResult> Handle(GetCasesQuery query, CancellationToken cancellationToken = default)
     {
         var cases = await _caseRepository.GetCasesByTenantId(_currentBroker.TenantId, cancellationToken);
-        return new GetCasesResult(cases.Select(c => new CaseDto(c.Id, c.Status, c.InquiryNotes)));
+        return new GetCasesResult(cases.Select(c => new CaseDto(c.Id, c.Status, c.InquiryNotes)).ToList());
     }
 }
