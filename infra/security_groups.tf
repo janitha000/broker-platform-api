@@ -79,10 +79,18 @@ resource "aws_security_group" "payment" {
   }
 }
 
-# Notification is not on the ALB. It pulls SQS and talks to RDS only.
+# Browser SignalR: ALB forwards /hubs* only. SQS/RDS still via egress.
 resource "aws_security_group" "notification" {
   name   = "notification-api-sg"
   vpc_id = module.vpc.vpc_id
+
+  ingress {
+    description     = "ALB to Notification"
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
 
   egress {
     from_port   = 0

@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Notification.Api.Health;
 
+[AllowAnonymous]
 [ApiController]
 [Route("health")]
 public sealed class PingController : ControllerBase

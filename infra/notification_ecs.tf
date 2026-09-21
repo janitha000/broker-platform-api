@@ -91,9 +91,19 @@ resource "aws_ecs_service" "notification" {
   desired_count   = var.ecs_desired_count
   launch_type     = "FARGATE"
 
+  health_check_grace_period_seconds = 120
+
   network_configuration {
     subnets          = module.vpc.public_subnets
     security_groups  = [aws_security_group.notification.id]
     assign_public_ip = true
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.notification.arn
+    container_name   = "api"
+    container_port   = 8080
+  }
+
+  depends_on = [aws_lb_listener_rule.notification_hubs]
 }
