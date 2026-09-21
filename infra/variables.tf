@@ -55,3 +55,9 @@ variable "ecs_desired_count" {
   description = "Fargate tasks per service. 0 = parked (no Fargate hours). Start from the ECS console by setting desired count to 1 when you need the APIs."
   default     = 0
 }
+
+variable "enable_signalr_redis" {
+  type        = bool
+  description = "ElastiCache for SignalR backplane. Bills even when ECS desired_count is 0."
+  default     = true
+}

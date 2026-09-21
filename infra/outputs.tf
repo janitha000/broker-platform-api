@@ -106,6 +106,10 @@ output "notification_queue_url" {
   value = aws_sqs_queue.notification_commands.url
 }
 
+output "signalr_redis_endpoint" {
+  value = var.enable_signalr_redis ? aws_elasticache_replication_group.signalr[0].primary_endpoint_address : null
+}
+
 output "document_ecr_repository_url" {
   value = aws_ecr_repository.document.repository_url
 }

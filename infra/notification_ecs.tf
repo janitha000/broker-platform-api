@@ -65,12 +65,20 @@ resource "aws_ecs_task_definition" "notification" {
         value = var.aws_region
       }
     ]
-    secrets = [
-      {
-        name      = "ConnectionStrings__Notification"
-        valueFrom = aws_secretsmanager_secret.notification_sql.arn
-      }
-    ]
+    secrets = concat(
+      [
+        {
+          name      = "ConnectionStrings__Notification"
+          valueFrom = aws_secretsmanager_secret.notification_sql.arn
+        }
+      ],
+      var.enable_signalr_redis ? [
+        {
+          name      = "ConnectionStrings__SignalR"
+          valueFrom = aws_secretsmanager_secret.notification_signalr[0].arn
+        }
+      ] : []
+    )
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -81,7 +89,10 @@ resource "aws_ecs_task_definition" "notification" {
     }
   }])
 
-  depends_on = [aws_secretsmanager_secret_version.notification_sql]
+  depends_on = [
+    aws_secretsmanager_secret_version.notification_sql,
+    aws_secretsmanager_secret_version.notification_signalr,
+  ]
 }
 
 resource "aws_ecs_service" "notification" {

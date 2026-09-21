@@ -27,17 +27,20 @@ resource "aws_iam_role_policy" "execution_secret" {
     Statement = [{
       Effect = "Allow"
       Action = ["secretsmanager:GetSecretValue"]
-      Resource = [
-        aws_secretsmanager_secret.sql.arn,
-        aws_secretsmanager_secret.identity_sql.arn,
-        aws_secretsmanager_secret.notification_sql.arn,
-        aws_secretsmanager_secret.document_sql.arn,
-        aws_secretsmanager_secret.audit_sql.arn,
-        aws_secretsmanager_secret.jwt.arn,
-        aws_secretsmanager_secret.auth0_client.arn,
-        aws_secretsmanager_secret.auth0_management.arn,
-        aws_secretsmanager_secret.auth0_payment.arn,
-      ]
+      Resource = concat(
+        [
+          aws_secretsmanager_secret.sql.arn,
+          aws_secretsmanager_secret.identity_sql.arn,
+          aws_secretsmanager_secret.notification_sql.arn,
+          aws_secretsmanager_secret.document_sql.arn,
+          aws_secretsmanager_secret.audit_sql.arn,
+          aws_secretsmanager_secret.jwt.arn,
+          aws_secretsmanager_secret.auth0_client.arn,
+          aws_secretsmanager_secret.auth0_management.arn,
+          aws_secretsmanager_secret.auth0_payment.arn,
+        ],
+        var.enable_signalr_redis ? [aws_secretsmanager_secret.notification_signalr[0].arn] : []
+      )
     }]
   })
 }
