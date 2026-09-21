@@ -73,4 +73,55 @@ public static class DependencyInjection
             });
         return services;
     }
+
+    public static IServiceCollection AddBrokerWebHost(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        BrokerWebHostOptions? options = null)
+    {
+        options ??= new BrokerWebHostOptions();
+
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen();
+        services.AddControllers()
+            .AddJsonOptions(json =>
+                json.JsonSerializerOptions.Converters.Add(
+                    new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
+        var origins = configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+        if (origins.Length > 0)
+        {
+            services.AddCors(cors =>
+            {
+                cors.AddDefaultPolicy(policy =>
+                {
+                    policy.WithOrigins(origins)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                    if (options.AllowCredentials)
+                        policy.AllowCredentials();
+                });
+            });
+        }
+
+        return services;
+    }
+
+    public static WebApplication UseBrokerWebHost(this WebApplication app)
+    {
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
+
+        var origins = app.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+        if (origins.Length > 0)
+            app.UseCors();
+
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapControllers();
+        return app;
+    }
 }

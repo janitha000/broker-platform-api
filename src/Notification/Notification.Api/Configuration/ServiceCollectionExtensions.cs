@@ -10,37 +10,14 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen();
-        services.AddControllers();
-        services.AddCorsFromConfiguration(configuration);
+        services.AddBrokerWebHost(
+            configuration,
+            new BrokerWebHostOptions { AllowCredentials = true });
         services.AddHttpContextAccessor();
         services.AddBrokerSessionAuthentication(configuration);
         services.AddAuthorization();
         services.AddSignalR();
         services.AddSingleton<IRealtimeNotifier, SignalRRealtimeNotifier>();
-        return services;
-    }
-
-    private static IServiceCollection AddCorsFromConfiguration(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        var corsOrigins = configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
-        if (corsOrigins.Length > 0)
-        {
-            services.AddCors(options =>
-            {
-                options.AddDefaultPolicy(policy =>
-                {
-                    policy.WithOrigins(corsOrigins)
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials();
-                });
-            });
-        }
-
         return services;
     }
 }

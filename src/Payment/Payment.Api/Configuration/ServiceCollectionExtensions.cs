@@ -1,3 +1,4 @@
+using Broker.Hosting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Payment.Api.Auth;
 
@@ -9,11 +10,8 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen();
+        services.AddBrokerWebHost(configuration);
         services.AddPaymentAuth0(configuration);
-        services.AddControllers();
-        services.AddCorsFromConfiguration(configuration);
         return services;
     }
 
@@ -49,27 +47,6 @@ public static class ServiceCollectionExtensions
                 PaymentAuth.RefundPolicy,
                 policy => policy.RequireAssertion(ctx => PaymentAuth.HasRefundPermission(ctx.User)));
         });
-        return services;
-    }
-
-    private static IServiceCollection AddCorsFromConfiguration(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        var corsOrigins = configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
-        if (corsOrigins.Length > 0)
-        {
-            services.AddCors(options =>
-            {
-                options.AddDefaultPolicy(policy =>
-                {
-                    policy.WithOrigins(corsOrigins)
-                        .AllowAnyHeader()
-                        .AllowAnyMethod();
-                });
-            });
-        }
-
         return services;
     }
 }

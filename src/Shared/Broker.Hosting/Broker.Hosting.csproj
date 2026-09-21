@@ -8,7 +8,7 @@
     <PackageId>Broker.Hosting</PackageId>
     <Version>1.1.0</Version>
     <Authors>broker-platform</Authors>
-    <Description>Cookie JWT auth for Identity and Origination hosts.</Description>
+    <Description>Shared HTTP host kit: cookie JWT, CORS, Swagger, and middleware order.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/janitha000/broker-platform-api</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -18,5 +18,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
   </ItemGroup>
 </Project>

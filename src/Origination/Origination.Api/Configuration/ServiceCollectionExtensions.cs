@@ -11,8 +11,8 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen();
+        services.AddBrokerWebHost(configuration);
+
         services.AddHttpContextAccessor();
         services.AddScoped<JwtCurrentBroker>();
         services.AddScoped<ICurrentBroker>(sp => sp.GetRequiredService<JwtCurrentBroker>());
@@ -42,32 +42,8 @@ public static class ServiceCollectionExtensions
                 policy => policy.RequireAssertion(ctx =>
                     OriginationAuth.HasPermission(ctx.User, CasePermissions.Settle)));
         });
-        services.AddControllers()
-            .AddJsonOptions(options =>
-                options.JsonSerializerOptions.Converters.Add(
-                    new System.Text.Json.Serialization.JsonStringEnumConverter()));
-        services.AddCorsFromConfiguration(configuration);
-        return services;
-    }
-
-    private static IServiceCollection AddCorsFromConfiguration(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        var corsOrigins = configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
-        if (corsOrigins.Length > 0)
-        {
-            services.AddCors(options =>
-            {
-                options.AddDefaultPolicy(policy =>
-                {
-                    policy.WithOrigins(corsOrigins)
-                        .AllowAnyHeader()
-                        .AllowAnyMethod();
-                });
-            });
-        }
 
         return services;
     }
+
 }

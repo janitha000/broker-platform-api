@@ -1,6 +1,10 @@
 # Broker.Hosting
 
-Shared `broker.access` cookie authentication for Identity, Origination, and Notification.
+Shared HTTP host kit for the Broker Platform APIs.
+
+`AddBrokerWebHost` / `UseBrokerWebHost` register Swagger (Development), JSON string enums, CORS from `Cors:Origins` (no-op when empty), then `UseAuthentication` / `UseAuthorization` / `MapControllers`. Pass `BrokerWebHostOptions { AllowCredentials = true }` for Identity and Notification when CORS is enabled.
+
+Shared `broker.access` cookie authentication for Identity, Origination, Document, Audit, and Notification.
 
 `AddBrokerSessionAuthentication` picks a validator from `Auth:Mode`:
 
