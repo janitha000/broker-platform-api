@@ -2,6 +2,7 @@ using System.Text;
 using Broker.Hosting.Audit;
 using Broker.Hosting.Auth;
 using Broker.Hosting.OpenApi;
+using Broker.Hosting.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -92,6 +93,7 @@ public static class DependencyInjection
             .AddJsonOptions(json =>
                 json.JsonSerializerOptions.Converters.Add(
                     new System.Text.Json.Serialization.JsonStringEnumConverter()));
+        services.AddBrokerRateLimiting(configuration);
 
         var origins = configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
         if (origins.Length > 0)
@@ -125,6 +127,7 @@ public static class DependencyInjection
             app.UseCors();
 
         app.UseAuthentication();
+        app.UseRateLimiter();
         app.UseAuthorization();
         app.MapControllers();
         return app;
