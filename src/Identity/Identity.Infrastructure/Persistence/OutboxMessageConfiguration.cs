@@ -15,5 +15,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(m => m.IdempotencyKey).HasMaxLength(256).IsRequired();
         builder.HasIndex(m => m.IdempotencyKey).IsUnique();
         builder.HasIndex(m => m.PublishedAt);
+        builder.Property(m => m.TraceParent).HasMaxLength(128);
+        builder.Property(m => m.TraceState).HasMaxLength(512);
     }
 }

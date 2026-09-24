@@ -13,4 +13,6 @@ public sealed class OutboxMessage
     public string IdempotencyKey { get; set; } = string.Empty;
     public DateTime OccurredAt { get; set; }
     public DateTime? PublishedAt { get; set; }
+    public string? TraceParent { get; set; }
+    public string? TraceState { get; set; }
 }

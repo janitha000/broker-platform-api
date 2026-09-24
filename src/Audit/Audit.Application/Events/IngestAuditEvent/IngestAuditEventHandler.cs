@@ -57,6 +57,7 @@ public sealed class IngestAuditEventHandler
             Sensitivity = envelope.Resource.Sensitivity,
             CorrelationId = envelope.CorrelationId,
             RequestId = envelope.RequestId,
+            TraceId = envelope.TraceId,
             DataJson = envelope.DataJson,
             EnvelopeJson = envelopeJson,
         };

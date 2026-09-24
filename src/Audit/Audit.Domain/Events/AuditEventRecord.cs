@@ -19,6 +19,7 @@ public sealed class AuditEventRecord
     public string? Sensitivity { get; set; }
     public string? CorrelationId { get; set; }
     public string? RequestId { get; set; }
+    public string? TraceId { get; set; }
     public string? DataJson { get; set; }
     public string EnvelopeJson { get; set; } = string.Empty;
     public string? PrevHash { get; set; }

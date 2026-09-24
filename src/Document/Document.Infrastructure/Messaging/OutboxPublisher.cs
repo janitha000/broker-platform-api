@@ -1,3 +1,4 @@
+using Broker.Hosting.Telemetry;
 using Document.Application.Abstractions;
 using Document.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -49,7 +50,13 @@ public sealed class OutboxPublisher : BackgroundService
 
         foreach (var message in batch)
         {
-            await bus.Publish(message.Type, message.Payload, cancellationToken);
+            await TraceContext.Publish(
+                message.Type,
+                message.Payload,
+                message.TraceParent,
+                message.TraceState,
+                bus.Publish,
+                cancellationToken);
             message.PublishedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
         }

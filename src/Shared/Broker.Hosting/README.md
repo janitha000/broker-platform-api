@@ -2,7 +2,13 @@
 
 Shared HTTP host kit for the Broker Platform APIs.
 
-`AddBrokerWebHost` / `UseBrokerWebHost` register Swagger (Development), JSON string enums, CORS from `Cors:Origins` (no-op when empty), rate limiting, then `UseAuthentication` / `UseRateLimiter` / `UseAuthorization` / `MapControllers`. Swagger marks non-nullable C# properties as required (`SupportNonNullableReferenceTypes` plus `RequireNonNullablePropertiesSchemaFilter`, because positional records omit `required` otherwise). Pass `BrokerWebHostOptions { AllowCredentials = true }` for Identity and Notification when CORS is enabled.
+`AddBrokerWebHost` / `UseBrokerWebHost` register OpenTelemetry tracing, Swagger (Development), JSON string enums, CORS from `Cors:Origins` (no-op when empty), rate limiting, then `UseAuthentication` / `UseRateLimiter` / `UseAuthorization` / `MapControllers`.
+
+## Distributed tracing
+
+`AddBrokerTelemetry` (called from `AddBrokerWebHost`) creates W3C `Activity` spans for inbound HTTP and outbound `HttpClient`. Custom producer/consumer spans use `Broker.Hosting.Telemetry.TraceContext`. Set `Telemetry:ServiceName` (or `BrokerWebHostOptions.ServiceName`) per API. Set `Telemetry:OtlpEndpoint` or `OTEL_EXPORTER_OTLP_ENDPOINT` to export OTLP (for example `http://localhost:4317`). With no endpoint, spans still propagate on outbox/EventBridge/SQS payloads; nothing is exported.
+
+Swagger marks non-nullable C# properties as required (`SupportNonNullableReferenceTypes` plus `RequireNonNullablePropertiesSchemaFilter`, because positional records omit `required` otherwise). Pass `BrokerWebHostOptions { AllowCredentials = true }` for Identity and Notification when CORS is enabled.
 
 ## Rate limiting
 

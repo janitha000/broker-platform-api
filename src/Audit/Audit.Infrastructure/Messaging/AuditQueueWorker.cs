@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Amazon;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Audit.Application.Events.IngestAuditEvent;
 using Broker.Hosting.Audit;
+using Broker.Hosting.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -61,9 +63,21 @@ public sealed class AuditQueueWorker : BackgroundService
                             continue;
                         }
 
+                        using var activity = TraceContext.Start(
+                            "process AuditEvent",
+                            ActivityKind.Consumer,
+                            envelope.TraceParent,
+                            envelope.TraceState);
+                        activity?.SetTag("messaging.system", "aws.sqs");
+                        activity?.SetTag("messaging.operation", "process");
+                        activity?.SetTag("messaging.message.id", message.MessageId);
+
+                        if (string.IsNullOrWhiteSpace(envelope.Event.TraceId))
+                            envelope.Event.TraceId = Activity.Current?.TraceId.ToString();
+
                         await using var scope = _scopeFactory.CreateAsyncScope();
                         var handler = scope.ServiceProvider.GetRequiredService<IngestAuditEventHandler>();
-                        await handler.Handle(envelope, stoppingToken);
+                        await handler.Handle(envelope.Event, stoppingToken);
                         await sqs.DeleteMessageAsync(_options.QueueUrl, message.ReceiptHandle, stoppingToken);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
@@ -80,7 +94,9 @@ public sealed class AuditQueueWorker : BackgroundService
         }
     }
 
-    private static AuditEvent? ReadAuditEvent(string body)
+    private sealed record ParsedAuditEvent(AuditEvent Event, string? TraceParent, string? TraceState);
+
+    private static ParsedAuditEvent? ReadAuditEvent(string body)
     {
         using var json = JsonDocument.Parse(body);
         var root = json.RootElement;
@@ -93,6 +109,8 @@ public sealed class AuditQueueWorker : BackgroundService
             || detail.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
             return null;
 
-        return JsonSerializer.Deserialize<AuditEvent>(detail.GetRawText(), AuditEventJson.Options);
+        TraceContext.TryGetFromJson(detail, out var traceParent, out var traceState);
+        var auditEvent = JsonSerializer.Deserialize<AuditEvent>(detail.GetRawText(), AuditEventJson.Options);
+        return auditEvent is null ? null : new ParsedAuditEvent(auditEvent, traceParent, traceState);
     }
 }

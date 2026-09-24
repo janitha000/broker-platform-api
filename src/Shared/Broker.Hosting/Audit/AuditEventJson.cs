@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -33,6 +34,7 @@ public static class AuditEventJson
             Outcome = auditEvent.Outcome,
             CorrelationId = auditEvent.CorrelationId,
             RequestId = auditEvent.RequestId,
+            TraceId = auditEvent.TraceId ?? Activity.Current?.TraceId.ToString(),
             DataJson = data,
             Actor = new AuditActor
             {

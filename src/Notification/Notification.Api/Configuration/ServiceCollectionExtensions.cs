@@ -13,7 +13,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddBrokerWebHost(
             configuration,
-            new BrokerWebHostOptions { AllowCredentials = true });
+            new BrokerWebHostOptions { AllowCredentials = true, ServiceName = "notification-api" });
         services.AddHttpContextAccessor();
         services.AddBrokerSessionAuthentication(configuration);
         services.AddAuthorization();

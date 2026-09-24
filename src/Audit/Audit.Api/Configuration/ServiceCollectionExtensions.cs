@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddBrokerWebHost(configuration);
+        services.AddBrokerWebHost(configuration, new BrokerWebHostOptions { ServiceName = "audit-api" });
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentBroker, JwtCurrentBroker>();

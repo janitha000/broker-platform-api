@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Amazon;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Broker.Hosting.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -110,6 +112,15 @@ public sealed class NotificationQueueWorker : BackgroundService
         if (detail is null || string.IsNullOrWhiteSpace(detail.IdempotencyKey))
             throw new InvalidOperationException("SQS body is not a CaseFactFindCompleted EventBridge event.");
 
+        using var activity = TraceContext.Start(
+            $"process {envelope?.DetailType ?? "CaseFactFindCompleted"}",
+            ActivityKind.Consumer,
+            detail.TraceParent,
+            detail.TraceState);
+        activity?.SetTag("messaging.system", "aws.sqs");
+        activity?.SetTag("messaging.operation", "process");
+        activity?.SetTag("messaging.message.id", message.MessageId);
+
         var payload = JsonSerializer.Serialize(new SendNotificationCommand(
             string.IsNullOrWhiteSpace(detail.Channel) ? "Email" : detail.Channel,
             detail.Recipient ?? $"broker-{detail.BrokerId}@invalid.local",
@@ -133,6 +144,8 @@ public sealed class NotificationQueueWorker : BackgroundService
             Status = InboxStatus.Received,
             ReceivedAt = DateTime.UtcNow,
             NextAttemptAt = DateTime.UtcNow,
+            TraceParent = detail.TraceParent,
+            TraceState = detail.TraceState,
         }, cancellationToken);
 
         await sqs.DeleteMessageAsync(_options.QueueUrl, message.ReceiptHandle, cancellationToken);

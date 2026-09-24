@@ -14,7 +14,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddBrokerWebHost(
             configuration,
-            new BrokerWebHostOptions { AllowCredentials = true });
+            new BrokerWebHostOptions { AllowCredentials = true, ServiceName = "identity-api" });
         services.AddBrokerSessionAuthentication(configuration);
         services.AddAuth0Authentication(configuration);
         services.AddAuthorization();

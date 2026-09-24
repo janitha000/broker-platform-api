@@ -1,6 +1,7 @@
 using Amazon;
 using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
+using Broker.Hosting.Telemetry;
 using Microsoft.Extensions.Options;
 using Origination.Application.Abstractions;
 
@@ -27,7 +28,7 @@ public sealed class EventBridgeMessageBus : IMessageBus
                     EventBusName = _options.EventBusName,
                     Source = _options.Source,
                     DetailType = type,
-                    Detail = payload,
+                    Detail = TraceContext.InjectIntoJson(payload),
                     Time = DateTime.UtcNow,
                 },
             ],

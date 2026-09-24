@@ -24,6 +24,7 @@ public sealed class AuditEventRecordConfiguration : IEntityTypeConfiguration<Aud
         builder.Property(x => x.Sensitivity).HasMaxLength(32);
         builder.Property(x => x.CorrelationId).HasMaxLength(128);
         builder.Property(x => x.RequestId).HasMaxLength(128);
+        builder.Property(x => x.TraceId).HasMaxLength(64);
         builder.Property(x => x.DataJson);
         builder.Property(x => x.EnvelopeJson).IsRequired();
         builder.Property(x => x.PrevHash).HasMaxLength(64);

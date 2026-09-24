@@ -10,7 +10,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddBrokerWebHost(configuration);
+        services.AddBrokerWebHost(configuration, new BrokerWebHostOptions { ServiceName = "payment-api" });
         services.AddPaymentAuth0(configuration);
         return services;
     }

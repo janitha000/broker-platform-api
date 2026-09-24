@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Text.Json;
+using Broker.Hosting.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -67,6 +69,15 @@ public sealed class InboxDispatcher : BackgroundService
 
         foreach (var message in batch)
         {
+            using var activity = TraceContext.Start(
+                $"process inbox {message.Type}",
+                ActivityKind.Consumer,
+                message.TraceParent,
+                message.TraceState);
+            activity?.SetTag("messaging.system", "inbox");
+            activity?.SetTag("messaging.operation", "process");
+            activity?.SetTag("messaging.message.id", message.Id.ToString("D"));
+
             try
             {
                 var command = JsonSerializer.Deserialize<SendNotificationCommand>(message.Payload, JsonOptions)

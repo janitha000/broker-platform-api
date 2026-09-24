@@ -1,3 +1,4 @@
+using Broker.Hosting.Telemetry;
 using Document.Application.Abstractions;
 using Microsoft.Extensions.Logging;
 
@@ -14,7 +15,7 @@ public sealed class LoggingMessageBus : IMessageBus
 
     public Task Publish(string type, string payload, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Outbox publish {Type} {Payload}", type, payload);
+        _logger.LogInformation("Outbox publish {Type} {Payload}", type, TraceContext.InjectIntoJson(payload));
         return Task.CompletedTask;
     }
 }

@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Amazon;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Broker.Hosting.Telemetry;
 using Document.Application.Documents.ScanLandedObject;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -54,13 +56,28 @@ public sealed class LandingObjectCreatedWorker : BackgroundService
                 {
                     try
                     {
-                        var key = ReadLandingKey(message.Body);
+                        using var json = JsonDocument.Parse(message.Body);
+                        var key = ReadLandingKey(json.RootElement);
                         if (string.IsNullOrWhiteSpace(key))
                         {
                             _logger.LogWarning("SQS {MessageId} had no S3 object key; dropping", message.MessageId);
                             await sqs.DeleteMessageAsync(_options.QueueUrl, message.ReceiptHandle, stoppingToken);
                             continue;
                         }
+
+                        string? traceParent = null;
+                        string? traceState = null;
+                        if (json.RootElement.TryGetProperty("detail", out var detail))
+                            TraceContext.TryGetFromJson(detail, out traceParent, out traceState);
+
+                        using var activity = TraceContext.Start(
+                            "process ObjectCreated",
+                            ActivityKind.Consumer,
+                            traceParent,
+                            traceState);
+                        activity?.SetTag("messaging.system", "aws.sqs");
+                        activity?.SetTag("messaging.operation", "process");
+                        activity?.SetTag("messaging.message.id", message.MessageId);
 
                         await using var scope = _scopeFactory.CreateAsyncScope();
                         var handler = scope.ServiceProvider.GetRequiredService<ScanLandedObjectHandler>();
@@ -85,11 +102,8 @@ public sealed class LandingObjectCreatedWorker : BackgroundService
         }
     }
 
-    private static string? ReadLandingKey(string body)
+    private static string? ReadLandingKey(JsonElement root)
     {
-        using var json = JsonDocument.Parse(body);
-        var root = json.RootElement;
-
         if (root.TryGetProperty("detail", out var detail)
             && detail.TryGetProperty("object", out var evObject)
             && evObject.TryGetProperty("key", out var evKey))

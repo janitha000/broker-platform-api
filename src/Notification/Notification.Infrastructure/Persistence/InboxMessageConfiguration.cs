@@ -15,6 +15,8 @@ public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMe
         builder.Property(m => m.IdempotencyKey).HasMaxLength(256).IsRequired();
         builder.Property(m => m.Status).HasMaxLength(32).IsRequired();
         builder.Property(m => m.LastError).HasMaxLength(2000);
+        builder.Property(m => m.TraceParent).HasMaxLength(128);
+        builder.Property(m => m.TraceState).HasMaxLength(512);
         builder.HasIndex(m => m.IdempotencyKey).IsUnique();
         builder.HasIndex(m => new { m.Status, m.NextAttemptAt });
     }

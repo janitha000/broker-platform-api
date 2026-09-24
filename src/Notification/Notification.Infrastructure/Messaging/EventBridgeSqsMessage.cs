@@ -21,5 +21,9 @@ public sealed class CaseFactFindCompletedDetail
     public Dictionary<string, string>? Data { get; set; }
     public string IdempotencyKey { get; set; } = string.Empty;
     public string? CorrelationId { get; set; }
+    [JsonPropertyName("traceparent")]
+    public string? TraceParent { get; set; }
+    [JsonPropertyName("tracestate")]
+    public string? TraceState { get; set; }
     public string? Recipient { get; set; }
 }

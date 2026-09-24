@@ -20,4 +20,6 @@ public sealed class InboxMessage
     public DateTime? LockedUntil { get; set; }
     public int AttemptCount { get; set; }
     public string? LastError { get; set; }
+    public string? TraceParent { get; set; }
+    public string? TraceState { get; set; }
 }

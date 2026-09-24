@@ -51,6 +51,7 @@ public sealed class ListAuditEventsHandler
             row.CaseId,
             row.Sensitivity,
             row.CorrelationId,
+            row.TraceId,
             row.DataJson,
             row.RecordHash);
 }

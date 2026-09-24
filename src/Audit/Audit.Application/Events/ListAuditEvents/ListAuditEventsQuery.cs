@@ -20,6 +20,7 @@ public sealed record AuditEventItem(
     Guid? CaseId,
     string? Sensitivity,
     string? CorrelationId,
+    string? TraceId,
     string? DataJson,
     string RecordHash);
 

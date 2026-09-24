@@ -3,6 +3,7 @@ using Broker.Hosting.Audit;
 using Broker.Hosting.Auth;
 using Broker.Hosting.OpenApi;
 using Broker.Hosting.RateLimiting;
+using Broker.Hosting.Telemetry;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -83,6 +84,7 @@ public static class DependencyInjection
     {
         options ??= new BrokerWebHostOptions();
 
+        services.AddBrokerTelemetry(configuration, options.ServiceName);
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(swagger =>
         {

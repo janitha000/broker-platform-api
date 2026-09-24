@@ -7,4 +7,10 @@ public sealed class BrokerWebHostOptions
     /// (cookies / SignalR). Leave false for Origination-style APIs.
     /// </summary>
     public bool AllowCredentials { get; init; }
+
+    /// <summary>
+    /// OpenTelemetry resource service name (Jaeger/Tempo grouping).
+    /// Falls back to Telemetry:ServiceName / OTEL_SERVICE_NAME / broker-api.
+    /// </summary>
+    public string? ServiceName { get; init; }
 }

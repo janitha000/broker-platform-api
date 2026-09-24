@@ -11,5 +11,6 @@ public sealed class AuditEvent
     public AuditResource Resource { get; set; } = new();
     public string? CorrelationId { get; set; }
     public string? RequestId { get; set; }
+    public string? TraceId { get; set; }
     public string? DataJson { get; set; }
 }

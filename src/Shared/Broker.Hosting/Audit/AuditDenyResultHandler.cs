@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -68,6 +69,7 @@ public sealed class AuditDenyResultHandler : IAuthorizationMiddlewareResultHandl
                 },
                 CorrelationId = context.TraceIdentifier,
                 RequestId = context.TraceIdentifier,
+                TraceId = Activity.Current?.TraceId.ToString(),
             });
             await recorder.Flush(context.RequestAborted);
         }
