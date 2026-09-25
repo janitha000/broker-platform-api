@@ -15,7 +15,11 @@ public sealed class CreateCaseHandlerTests
         var repository = new InMemoryCaseRepository();
         var brokerId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
-        var handler = new CreateCaseHandler(repository, new StubCurrentBroker(brokerId, tenantId), new InMemoryUnitOfWork());
+        var handler = new CreateCaseHandler(
+            repository,
+            new StubCurrentBroker(brokerId, tenantId),
+            new InMemoryUnitOfWork(),
+            new DisabledCaseOpenedPublisher());
 
         var result = await handler.Handle(new CreateCaseCommand("First home inquiry"));
 
@@ -28,6 +32,27 @@ public sealed class CreateCaseHandlerTests
         Assert.Equal(tenantId, stored.TenantId);
         Assert.Equal("First home inquiry", stored.InquiryNotes);
     }
+
+    [Fact]
+    public async Task Handle_BusOutbox_PublishesCaseOpened()
+    {
+        var repository = new InMemoryCaseRepository();
+        var brokerId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var bus = new RecordingCaseOpenedPublisher();
+        var handler = new CreateCaseHandler(
+            repository,
+            new StubCurrentBroker(brokerId, tenantId),
+            new InMemoryUnitOfWork(),
+            bus);
+
+        var result = await handler.Handle(new CreateCaseCommand("notes"));
+
+        var published = Assert.Single(bus.Published);
+        Assert.Equal(result.CaseId, published.CaseId);
+        Assert.Equal(tenantId, published.TenantId);
+        Assert.Equal(brokerId, published.BrokerId);
+    }
 }
 
 public sealed class GetCaseHandlerTests
@@ -38,7 +63,11 @@ public sealed class GetCaseHandlerTests
         var repository = new InMemoryCaseRepository();
         var tenantA = Guid.NewGuid();
         var tenantB = Guid.NewGuid();
-        var created = await new CreateCaseHandler(repository, new StubCurrentBroker(Guid.NewGuid(), tenantA), new InMemoryUnitOfWork())
+        var created = await new CreateCaseHandler(
+                repository,
+                new StubCurrentBroker(Guid.NewGuid(), tenantA),
+                new InMemoryUnitOfWork(),
+                new DisabledCaseOpenedPublisher())
             .Handle(new CreateCaseCommand("notes"));
 
         var result = await new GetCaseHandler(
@@ -49,6 +78,31 @@ public sealed class GetCaseHandlerTests
             .Handle(new GetCaseQuery(created.CaseId));
 
         Assert.Null(result);
+    }
+}
+
+file sealed class DisabledCaseOpenedPublisher : ICaseOpenedPublisher
+{
+    public bool UsesBusOutbox => false;
+
+    public Task Publish(
+        Broker.Contracts.Origination.CaseOpened message,
+        CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
+file sealed class RecordingCaseOpenedPublisher : ICaseOpenedPublisher
+{
+    public bool UsesBusOutbox => true;
+
+    public List<Broker.Contracts.Origination.CaseOpened> Published { get; } = [];
+
+    public Task Publish(
+        Broker.Contracts.Origination.CaseOpened message,
+        CancellationToken cancellationToken = default)
+    {
+        Published.Add(message);
+        return Task.CompletedTask;
     }
 }
 

@@ -1,3 +1,4 @@
+using Broker.Contracts.Origination;
 using Origination.Application.Abstractions;
 using Origination.Domain.Abstractions;
 using Origination.Domain.Cases;
@@ -8,14 +9,19 @@ public sealed class CreateCaseHandler
 {
     private readonly ICaseRepository _caseRepository;
     private readonly ICurrentBroker _currentBroker;
-
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICaseOpenedPublisher _caseOpened;
 
-    public CreateCaseHandler(ICaseRepository caseRepository, ICurrentBroker currentBroker, IUnitOfWork unitOfWork)
+    public CreateCaseHandler(
+        ICaseRepository caseRepository,
+        ICurrentBroker currentBroker,
+        IUnitOfWork unitOfWork,
+        ICaseOpenedPublisher caseOpened)
     {
         _caseRepository = caseRepository;
         _currentBroker = currentBroker;
         _unitOfWork = unitOfWork;
+        _caseOpened = caseOpened;
     }
 
     public async Task<CreateCaseResult> Handle(CreateCaseCommand command, CancellationToken cancellationToken = default)
@@ -31,6 +37,20 @@ public sealed class CreateCaseHandler
         };
 
         await _caseRepository.Add(@case, cancellationToken);
+
+        if (_caseOpened.UsesBusOutbox)
+        {
+            await _caseOpened.Publish(
+                new CaseOpened
+                {
+                    CaseId = @case.Id,
+                    TenantId = @case.TenantId,
+                    BrokerId = @case.BrokerId,
+                    OccurredAt = @case.CreatedAt,
+                },
+                cancellationToken);
+        }
+
         await _unitOfWork.SaveChanges(cancellationToken);
 
         return new CreateCaseResult(@case.Id, @case.Status);

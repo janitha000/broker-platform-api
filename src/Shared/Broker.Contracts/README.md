@@ -18,6 +18,10 @@ When RabbitMq is on, `CompleteFactFindHandler` calls `IPublishEndpoint.Publish` 
 
 Apply Origination EF migrations so `InboxState`, `OutboxMessage`, and `OutboxState` exist.
 
-## Step 4 (current)
+## Step 4
 
 Notification receive endpoints use `UseMessageRetry`: **3 immediate retries** for `EmailDeliveryFailedException` (SES/mock send failed). `NotificationTemplateNotFoundException` is **ignored** by retry (faults on first failure). After retries are exhausted, RabbitMQ places the message on the endpoint **`_error`** queue (`CaseFactFindCompleted_error`). Inspect it in the management UI. The old `InboxDispatcher` is not used on this path.
+
+## Step 5 (current)
+
+Origination hosts a MassTransit **state machine** (`CaseLifecycle`) correlated by `CaseId`. `CreateCase` publishes `CaseOpened` (bus outbox, same as fact-find). The saga starts in **Enquiry**, then `CaseFactFindCompleted` moves it to **FactFindCompleted**. Email still goes to the Notification consumer (choreography). The `Cases` table remains the board source of truth; the saga is process state. Apply Origination EF migrations so `CaseLifecycleState` exists. This is not `RegistrationSaga`.
