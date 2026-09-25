@@ -1,19 +1,19 @@
-using Broker.Contracts.Origination;
+using Broker.Contracts.Notification;
 using MassTransit;
 using Notification.Application.Notifications.SendNotification;
 
 namespace Notification.Infrastructure.Messaging;
 
-public sealed class CaseFactFindCompletedConsumer : IConsumer<CaseFactFindCompleted>
+public sealed class SendCaseFactFindEmailConsumer : IConsumer<SendCaseFactFindEmail>
 {
     private readonly SendNotificationHandler _handler;
 
-    public CaseFactFindCompletedConsumer(SendNotificationHandler handler)
+    public SendCaseFactFindEmailConsumer(SendNotificationHandler handler)
     {
         _handler = handler;
     }
 
-    public async Task Consume(ConsumeContext<CaseFactFindCompleted> context)
+    public async Task Consume(ConsumeContext<SendCaseFactFindEmail> context)
     {
         var message = context.Message;
         var outcome = await _handler.Handle(

@@ -48,6 +48,8 @@ public sealed class CaseLifecycleStateMachineTests
             await harness.Bus.Publish(FactFind(caseId));
 
             Assert.True(await saga.Consumed.Any<CaseFactFindCompleted>());
+            Assert.True(await harness.Sent.Any<Broker.Contracts.Notification.SendCaseFactFindEmail>(
+                x => x.Context.Message.CaseId == caseId));
             var instance = saga.Sagas.Contains(caseId);
             Assert.Equal(nameof(CaseLifecycleStateMachine.FactFindCompleted), instance?.CurrentState);
             Assert.NotNull(instance?.FactFindCompletedAt);
@@ -79,6 +81,7 @@ public sealed class CaseLifecycleStateMachineTests
             Assert.NotNull(instance);
             Assert.Equal(nameof(CaseLifecycleStateMachine.Enquiry), instance!.CurrentState);
             Assert.Null(instance.FactFindCompletedAt);
+            Assert.Empty(harness.Sent.Select<Broker.Contracts.Notification.SendCaseFactFindEmail>());
         }
         finally
         {
@@ -100,6 +103,7 @@ public sealed class CaseLifecycleStateMachineTests
             Assert.True(await harness.Consumed.Any<CaseFactFindCompleted>());
             var saga = harness.GetSagaStateMachineHarness<CaseLifecycleStateMachine, CaseLifecycleState>();
             Assert.Null(saga.Created.Contains(caseId));
+            Assert.Empty(harness.Sent.Select<Broker.Contracts.Notification.SendCaseFactFindEmail>());
         }
         finally
         {

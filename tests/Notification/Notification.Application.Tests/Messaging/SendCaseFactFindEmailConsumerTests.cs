@@ -1,4 +1,5 @@
-using Broker.Contracts.Origination;
+using Broker.Contracts;
+using Broker.Contracts.Notification;
 using MassTransit;
 using MassTransit.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,10 +12,10 @@ using Notification.Infrastructure.Messaging;
 
 namespace Notification.Application.Tests.Messaging;
 
-public sealed class CaseFactFindCompletedConsumerTests
+public sealed class SendCaseFactFindEmailConsumerTests
 {
     [Fact]
-    public async Task Consume_PublishesFactFindCompleted_SendsEmail()
+    public async Task Consume_Command_SendsEmail()
     {
         var store = new InMemoryStore();
         store.SeedTemplate();
@@ -25,9 +26,9 @@ public sealed class CaseFactFindCompletedConsumerTests
         await harness.Start();
         try
         {
-            await harness.Bus.Publish(SampleMessage("origination:ok:email"));
+            await SendCommand(harness, SampleMessage("origination:ok:email"));
 
-            Assert.True(await harness.Consumed.Any<CaseFactFindCompleted>());
+            Assert.True(await harness.Consumed.Any<SendCaseFactFindEmail>());
             Assert.Equal(1, email.Calls);
         }
         finally
@@ -48,13 +49,13 @@ public sealed class CaseFactFindCompletedConsumerTests
         await harness.Start();
         try
         {
-            await harness.Bus.Publish(SampleMessage("origination:retry:email"));
+            await SendCommand(harness, SampleMessage("origination:retry:email"));
 
-            Assert.True(await harness.Consumed.Any<CaseFactFindCompleted>(
+            Assert.True(await harness.Consumed.Any<SendCaseFactFindEmail>(
                 x => x.Exception is null),
                 "consumer should succeed after email retries");
             Assert.Equal(3, email.Calls);
-            Assert.False(await harness.Published.Any<Fault<CaseFactFindCompleted>>());
+            Assert.False(await harness.Published.Any<Fault<SendCaseFactFindEmail>>());
         }
         finally
         {
@@ -74,9 +75,9 @@ public sealed class CaseFactFindCompletedConsumerTests
         await harness.Start();
         try
         {
-            await harness.Bus.Publish(SampleMessage("origination:dead:email"));
+            await SendCommand(harness, SampleMessage("origination:dead:email"));
 
-            Assert.True(await harness.Published.Any<Fault<CaseFactFindCompleted>>());
+            Assert.True(await harness.Published.Any<Fault<SendCaseFactFindEmail>>());
             Assert.Equal(1 + NotificationMessageRetry.EmailImmediateRetries, email.Calls);
         }
         finally
@@ -96,12 +97,12 @@ public sealed class CaseFactFindCompletedConsumerTests
         await harness.Start();
         try
         {
-            await harness.Bus.Publish(SampleMessage("origination:notemplate:email"));
+            await SendCommand(harness, SampleMessage("origination:notemplate:email"));
 
-            Assert.True(await harness.Published.Any<Fault<CaseFactFindCompleted>>());
+            Assert.True(await harness.Published.Any<Fault<SendCaseFactFindEmail>>());
             Assert.Equal(0, email.Calls);
-            var consumed = harness.GetConsumerHarness<CaseFactFindCompletedConsumer>()
-                .Consumed.Select<CaseFactFindCompleted>().ToList();
+            var consumed = harness.GetConsumerHarness<SendCaseFactFindEmailConsumer>()
+                .Consumed.Select<SendCaseFactFindEmail>().ToList();
             Assert.Single(consumed);
         }
         finally
@@ -117,13 +118,20 @@ public sealed class CaseFactFindCompletedConsumerTests
             .AddSingleton<ITemplateRenderer, PlaceholderTemplateRenderer>()
             .AddSingleton(email)
             .AddScoped<SendNotificationHandler>()
-            .AddMassTransitTestHarness(bus => bus.AddCaseFactFindCompletedConsumer())
+            .AddMassTransitTestHarness(bus => bus.AddSendCaseFactFindEmailConsumer())
             .BuildServiceProvider(true);
 
-    private static CaseFactFindCompleted SampleMessage(string idempotencyKey)
+    private static async Task SendCommand(ITestHarness harness, SendCaseFactFindEmail message)
+    {
+        var endpoint = await harness.Bus.GetSendEndpoint(
+            new Uri($"queue:{BrokerCommandQueues.SendCaseFactFindEmail}"));
+        await endpoint.Send(message);
+    }
+
+    private static SendCaseFactFindEmail SampleMessage(string idempotencyKey)
     {
         var caseId = Guid.NewGuid();
-        return new CaseFactFindCompleted
+        return new SendCaseFactFindEmail
         {
             CaseId = caseId,
             TenantId = Guid.NewGuid(),

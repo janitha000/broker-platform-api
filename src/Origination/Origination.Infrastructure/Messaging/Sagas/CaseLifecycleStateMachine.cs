@@ -1,10 +1,15 @@
+using Broker.Contracts;
 using Broker.Contracts.Origination;
+using Broker.Contracts.Notification;
 using MassTransit;
 
 namespace Origination.Infrastructure.Messaging.Sagas;
 
 public sealed class CaseLifecycleStateMachine : MassTransitStateMachine<CaseLifecycleState>
 {
+    public static readonly Uri SendCaseFactFindEmailAddress =
+        new($"queue:{BrokerCommandQueues.SendCaseFactFindEmail}");
+
     public CaseLifecycleStateMachine()
     {
         InstanceState(x => x.CurrentState);
@@ -31,6 +36,18 @@ public sealed class CaseLifecycleStateMachine : MassTransitStateMachine<CaseLife
             Ignore(CaseOpened),
             When(CaseFactFindCompleted)
                 .Then(context => context.Saga.FactFindCompletedAt = DateTime.UtcNow)
+                .Send(SendCaseFactFindEmailAddress, context => new SendCaseFactFindEmail
+                {
+                    CaseId = context.Message.CaseId,
+                    TenantId = context.Message.TenantId,
+                    BrokerId = context.Message.BrokerId,
+                    TemplateKey = context.Message.TemplateKey,
+                    Channel = context.Message.Channel,
+                    Data = context.Message.Data,
+                    IdempotencyKey = context.Message.IdempotencyKey,
+                    CorrelationId = context.Message.CorrelationId,
+                    Recipient = context.Message.Recipient,
+                })
                 .TransitionTo(FactFindCompleted));
 
         During(FactFindCompleted,

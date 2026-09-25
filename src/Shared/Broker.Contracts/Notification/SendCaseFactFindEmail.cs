@@ -1,10 +1,11 @@
-namespace Broker.Contracts.Origination;
+namespace Broker.Contracts.Notification;
 
 /// <summary>
-/// Domain event: fact-find was completed. Origination publishes this; the case-lifecycle
-/// saga consumes it and Sends <c>SendCaseFactFindEmail</c>. Notification does not subscribe.
+/// Command from the Origination case-lifecycle saga to Notification.
+/// Delivered with <c>Send</c> to <see cref="BrokerCommandQueues.SendCaseFactFindEmail"/>,
+/// not published for multiple subscribers.
 /// </summary>
-public sealed record CaseFactFindCompleted
+public sealed record SendCaseFactFindEmail
 {
     public Guid CaseId { get; init; }
     public Guid TenantId { get; init; }

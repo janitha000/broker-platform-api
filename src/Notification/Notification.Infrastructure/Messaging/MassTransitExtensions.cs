@@ -1,3 +1,4 @@
+using Broker.Contracts;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,9 +7,10 @@ namespace Notification.Infrastructure.Messaging;
 
 public static class MassTransitExtensions
 {
-    public static void AddCaseFactFindCompletedConsumer(this IBusRegistrationConfigurator bus)
+    public static void AddSendCaseFactFindEmailConsumer(this IBusRegistrationConfigurator bus)
     {
-        bus.AddConsumer<CaseFactFindCompletedConsumer>();
+        bus.AddConsumer<SendCaseFactFindEmailConsumer>()
+            .Endpoint(e => e.Name = BrokerCommandQueues.SendCaseFactFindEmail);
         bus.AddConfigureEndpointsCallback((_, cfg) =>
             cfg.UseMessageRetry(NotificationMessageRetry.Configure));
     }
@@ -23,7 +25,7 @@ public static class MassTransitExtensions
 
         services.AddMassTransit(bus =>
         {
-            bus.AddCaseFactFindCompletedConsumer();
+            bus.AddSendCaseFactFindEmailConsumer();
             if (options.UseRabbitMq)
             {
                 bus.UsingRabbitMq((context, cfg) =>

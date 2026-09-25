@@ -41,6 +41,9 @@ public static class MassTransitExtensions
 
             if (options.UseRabbitMq)
             {
+                bus.AddConfigureEndpointsCallback((context, _, cfg) =>
+                    cfg.UseEntityFrameworkOutbox<OriginationDbContext>(context));
+
                 bus.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host(options.Host, options.VirtualHost, h =>
