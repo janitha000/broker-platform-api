@@ -1,8 +1,8 @@
 namespace Broker.Contracts.Origination;
 
 /// <summary>
-/// Typed bus message for fact-find completion. Step 1 of MassTransit:
-/// Notification consumes this; Origination still publishes JSON via EventBridge/outbox.
+/// Typed bus message for fact-find completion. Origination publishes this from the outbox
+/// when MassTransit:Transport is RabbitMq; Notification consumes it.
 /// </summary>
 public sealed record CaseFactFindCompleted
 {

@@ -22,20 +22,30 @@ public sealed class NotificationQueueWorker : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly SqsWorkerOptions _options;
+    private readonly MassTransitOptions _massTransit;
     private readonly ILogger<NotificationQueueWorker> _logger;
 
     public NotificationQueueWorker(
         IServiceScopeFactory scopeFactory,
         IOptions<SqsWorkerOptions> options,
+        IOptions<MassTransitOptions> massTransit,
         ILogger<NotificationQueueWorker> logger)
     {
         _scopeFactory = scopeFactory;
         _options = options.Value;
+        _massTransit = massTransit.Value;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (_massTransit.UseRabbitMq)
+        {
+            _logger.LogInformation(
+                "MassTransit:Transport is RabbitMq; SQS worker not started (avoids duplicate CaseFactFindCompleted)");
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(_options.QueueUrl))
         {
             _logger.LogInformation("Messaging:QueueUrl empty; SQS worker not started");

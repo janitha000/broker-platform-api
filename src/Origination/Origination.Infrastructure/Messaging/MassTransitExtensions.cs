@@ -2,11 +2,11 @@ using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Notification.Infrastructure.Messaging;
+namespace Origination.Infrastructure.Messaging;
 
 public static class MassTransitExtensions
 {
-    public static IServiceCollection AddNotificationMassTransit(
+    public static IServiceCollection AddOriginationMassTransit(
         this IServiceCollection services,
         IConfiguration configuration)
     {
@@ -16,25 +16,20 @@ public static class MassTransitExtensions
 
         services.AddMassTransit(bus =>
         {
-            bus.AddConsumer<CaseFactFindCompletedConsumer>();
             if (options.UseRabbitMq)
             {
-                bus.UsingRabbitMq((context, cfg) =>
+                bus.UsingRabbitMq((_, cfg) =>
                 {
                     cfg.Host(options.Host, options.VirtualHost, h =>
                     {
                         h.Username(options.Username);
                         h.Password(options.Password);
                     });
-                    cfg.ConfigureEndpoints(context);
                 });
             }
             else
             {
-                bus.UsingInMemory((context, cfg) =>
-                {
-                    cfg.ConfigureEndpoints(context);
-                });
+                bus.UsingInMemory((_, cfg) => { });
             }
         });
 

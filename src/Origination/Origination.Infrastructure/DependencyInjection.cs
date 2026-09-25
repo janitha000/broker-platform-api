@@ -32,6 +32,7 @@ public static class DependencyInjection
             services.AddSingleton<IMessageBus, LoggingMessageBus>();
 
         services.AddHostedService<OutboxPublisher>();
+        services.AddOriginationMassTransit(configuration);
         services.AddDbContext<OriginationDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("Origination")));
         return services;

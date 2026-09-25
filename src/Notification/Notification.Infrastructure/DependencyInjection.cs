@@ -32,7 +32,7 @@ public static class DependencyInjection
         services.Configure<SqsWorkerOptions>(configuration.GetSection(SqsWorkerOptions.SectionName));
         services.AddHostedService<NotificationQueueWorker>();
         services.AddHostedService<InboxDispatcher>();
-        services.AddNotificationMassTransit();
+        services.AddNotificationMassTransit(configuration);
 
         return services;
     }
