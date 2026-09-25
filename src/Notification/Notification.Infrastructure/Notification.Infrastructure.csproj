@@ -10,16 +10,18 @@
     <ProjectReference Include="..\Notification.Application\Notification.Application.csproj" />
     <ProjectReference Include="..\Notification.Domain\Notification.Domain.csproj" />
     <ProjectReference Include="..\..\Shared\Broker.Hosting\Broker.Hosting.csproj" />
+    <ProjectReference Include="..\..\Shared\Broker.Contracts\Broker.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.SimpleEmail" Version="3.7.400.0" />
     <PackageReference Include="AWSSDK.SQS" Version="3.7.400.0" />
+    <PackageReference Include="MassTransit" Version="8.3.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.0" />
   </ItemGroup>
 </Project>
