@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Origination.Application.Abstractions;
 using Origination.Domain.Cases;
@@ -26,6 +27,9 @@ public sealed class OriginationDbContext : DbContext
     {
         modelBuilder.ApplyConfiguration(new CaseConfiguration());
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
         modelBuilder.Entity<Case>()
             .HasQueryFilter(c => c.TenantId == CurrentTenantId);
     }

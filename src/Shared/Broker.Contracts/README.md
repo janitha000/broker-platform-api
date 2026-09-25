@@ -8,18 +8,14 @@ Keep this project free of MassTransit, EF, and AWS packages. Both publishers and
 
 `CaseFactFindCompleted` consumer on Notification. Tests use the in-memory test harness.
 
-## Step 2 (current)
+## Step 2
 
-Origination `OutboxPublisher` **publishes** `CaseFactFindCompleted` on MassTransit when `MassTransit:Transport` is `RabbitMq`. Audit and other outbox types still use `IMessageBus` (Logging / EventBridge).
+Both APIs share RabbitMQ. Notification consumes `CaseFactFindCompleted`. SQS worker is off when `MassTransit:Transport` is `RabbitMq`.
 
-Notification uses the same Rabbit host and `ConfigureEndpoints`. The SQS fact-find worker does **not** start on RabbitMq (avoids two emails).
+## Step 3 (current)
 
-Local:
+When RabbitMq is on, `CompleteFactFindHandler` calls `IPublishEndpoint.Publish` **before** `SaveChanges`. MassTransit’s EF **bus outbox** stores the message on `OriginationDbContext` in that same commit, then delivers to Rabbit. Your JSON `OutboxMessages` row is only an idempotency marker (`PublishedAt` already set). Audit still uses the custom outbox + `OutboxPublisher`.
 
-```bash
-docker compose -f docker-compose.rabbitmq.yml up -d
-```
+Apply Origination EF migrations so `InboxState`, `OutboxMessage`, and `OutboxState` exist.
 
-Development `appsettings.Development.json` sets `Transport` to `RabbitMq` (guest/guest, `localhost`). Management UI: http://localhost:15672
-
-Without Rabbit, set `Transport` to `InMemory` — fact-find stays on the old outbox bus; the Notification consumer is process-local only.
+Local: `docker compose -f docker-compose.rabbitmq.yml up -d`, Development `Transport` = `RabbitMq`.

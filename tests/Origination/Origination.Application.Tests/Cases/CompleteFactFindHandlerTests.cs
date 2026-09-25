@@ -31,7 +31,8 @@ public sealed class CompleteFactFindHandlerTests
             new StubCurrentBroker(Guid.NewGuid(), tenantId, CasePermissions.FactFindAny),
             outbox,
             new InMemoryUnitOfWork(),
-            new NoopAuditRecorder());
+            new NoopAuditRecorder(),
+            new JsonOutboxFactFindPublisher());
         var outcome = await handler.Handle(new CompleteFactFindCommand(
             caseId,
             "Buy first home",
@@ -58,6 +59,41 @@ public sealed class CompleteFactFindHandlerTests
     }
 
     [Fact]
+    public async Task Handle_BusOutbox_PublishesTypedMessageAndMarksJsonOutboxDelivered()
+    {
+        var caseId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var brokerId = Guid.NewGuid();
+        var repository = new InMemoryFactFindCaseRepository();
+        var outbox = new InMemoryOutbox();
+        var bus = new RecordingBusOutboxPublisher();
+        await repository.Add(new Case
+        {
+            Id = caseId,
+            TenantId = tenantId,
+            BrokerId = brokerId,
+            Status = CaseStatus.Enquiry,
+            CreatedAt = DateTime.UtcNow,
+        });
+
+        var outcome = await new CompleteFactFindHandler(
+            repository,
+            new StubCurrentBroker(brokerId, tenantId, CasePermissions.FactFindAny),
+            outbox,
+            new InMemoryUnitOfWork(),
+            new NoopAuditRecorder(),
+            bus)
+            .Handle(new CompleteFactFindCommand(caseId, "Buy first home", 1m, 1m, 1m, 1m));
+
+        Assert.Equal(CompleteFactFindKind.Succeeded, outcome.Kind);
+        var published = Assert.Single(bus.Published);
+        Assert.Equal(caseId, published.CaseId);
+        Assert.Equal($"origination:{caseId}:fact-find-completed:email", published.IdempotencyKey);
+        var marker = Assert.Single(outbox.Messages);
+        Assert.NotNull(marker.PublishedAt);
+    }
+
+    [Fact]
     public async Task Handle_SameCaseTwice_DoesNotEnqueueSecondOutboxRow()
     {
         var caseId = Guid.NewGuid();
@@ -78,7 +114,8 @@ public sealed class CompleteFactFindHandlerTests
             new StubCurrentBroker(Guid.NewGuid(), tenantId, CasePermissions.FactFindAny),
             outbox,
             new InMemoryUnitOfWork(),
-            new NoopAuditRecorder());
+            new NoopAuditRecorder(),
+            new JsonOutboxFactFindPublisher());
         var command = new CompleteFactFindCommand(caseId, "Buy first home", 1m, 1m, 1m, 1m);
 
         await handler.Handle(command);
@@ -95,7 +132,8 @@ public sealed class CompleteFactFindHandlerTests
             new StubCurrentBroker(Guid.NewGuid(), Guid.NewGuid(), CasePermissions.FactFindAny),
             new InMemoryOutbox(),
             new InMemoryUnitOfWork(),
-            new NoopAuditRecorder());
+            new NoopAuditRecorder(),
+            new JsonOutboxFactFindPublisher());
 
         var outcome = await handler.Handle(new CompleteFactFindCommand(
             Guid.NewGuid(),
@@ -126,7 +164,8 @@ public sealed class CompleteFactFindHandlerTests
             new StubCurrentBroker(assistantId, tenantId, CasePermissions.FactFind),
             new InMemoryOutbox(),
             new InMemoryUnitOfWork(),
-            new NoopAuditRecorder())
+            new NoopAuditRecorder(),
+            new JsonOutboxFactFindPublisher())
             .Handle(new CompleteFactFindCommand(caseId, "x", 1m, 1m, 1m, 1m));
 
         Assert.Equal(CompleteFactFindKind.Succeeded, outcome.Kind);
@@ -152,7 +191,8 @@ public sealed class CompleteFactFindHandlerTests
             new StubCurrentBroker(Guid.NewGuid(), tenantId, CasePermissions.FactFind),
             new InMemoryOutbox(),
             new InMemoryUnitOfWork(),
-            new NoopAuditRecorder())
+            new NoopAuditRecorder(),
+            new JsonOutboxFactFindPublisher())
             .Handle(new CompleteFactFindCommand(caseId, "x", 1m, 1m, 1m, 1m));
 
         Assert.Equal(CompleteFactFindKind.Forbidden, outcome.Kind);
@@ -184,6 +224,31 @@ file sealed class NoopAuditRecorder : IAuditRecorder
     public void Record(AuditEvent auditEvent) { }
 
     public Task Flush(CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+file sealed class JsonOutboxFactFindPublisher : ICaseFactFindCompletedPublisher
+{
+    public bool UsesBusOutbox => false;
+
+    public Task Publish(
+        Broker.Contracts.Origination.CaseFactFindCompleted message,
+        CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
+file sealed class RecordingBusOutboxPublisher : ICaseFactFindCompletedPublisher
+{
+    public bool UsesBusOutbox => true;
+
+    public List<Broker.Contracts.Origination.CaseFactFindCompleted> Published { get; } = [];
+
+    public Task Publish(
+        Broker.Contracts.Origination.CaseFactFindCompleted message,
+        CancellationToken cancellationToken = default)
+    {
+        Published.Add(message);
+        return Task.CompletedTask;
+    }
 }
 
 file sealed class InMemoryOutbox : IOutbox

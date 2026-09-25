@@ -1,10 +1,11 @@
-using System.Text.Json;
+using Broker.Contracts.Origination;
 using Broker.Hosting.Audit;
 using Origination.Application.Abstractions;
 using Origination.Application.Auth;
 using Origination.Domain.Abstractions;
 using Origination.Domain.Cases;
 using Origination.Domain.Outbox;
+using System.Text.Json;
 
 namespace Origination.Application.Cases.CompleteFactFind;
 
@@ -15,19 +16,22 @@ public sealed class CompleteFactFindHandler
     private readonly IOutbox _outbox;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditRecorder _audit;
+    private readonly ICaseFactFindCompletedPublisher _factFindCompleted;
 
     public CompleteFactFindHandler(
         ICaseRepository caseRepository,
         ICurrentBroker currentBroker,
         IOutbox outbox,
         IUnitOfWork unitOfWork,
-        IAuditRecorder audit)
+        IAuditRecorder audit,
+        ICaseFactFindCompletedPublisher factFindCompleted)
     {
         _caseRepository = caseRepository;
         _currentBroker = currentBroker;
         _outbox = outbox;
         _unitOfWork = unitOfWork;
         _audit = audit;
+        _factFindCompleted = factFindCompleted;
     }
 
     public async Task<CompleteFactFindOutcome> Handle(
@@ -64,26 +68,41 @@ public sealed class CompleteFactFindHandler
         var idempotencyKey = $"origination:{@case.Id}:fact-find-completed:email";
         if (!await _outbox.Exists(idempotencyKey, cancellationToken))
         {
+            var message = new CaseFactFindCompleted
+            {
+                CaseId = @case.Id,
+                TenantId = @case.TenantId,
+                BrokerId = @case.BrokerId,
+                TemplateKey = "case.fact-find-completed",
+                Channel = "Email",
+                Data = new Dictionary<string, string> { ["caseId"] = @case.Id.ToString() },
+                IdempotencyKey = idempotencyKey,
+                CorrelationId = @case.Id.ToString(),
+            };
+
+            if (_factFindCompleted.UsesBusOutbox)
+                await _factFindCompleted.Publish(message, cancellationToken);
+
             _outbox.Add(new OutboxMessage
             {
                 Id = Guid.NewGuid(),
                 Type = OutboxMessageTypes.CaseFactFindCompleted,
                 IdempotencyKey = idempotencyKey,
                 OccurredAt = DateTime.UtcNow,
-                Payload = JsonSerializer.Serialize(new
-                {
-                    caseId = @case.Id,
-                    tenantId = @case.TenantId,
-                    brokerId = @case.BrokerId,
-                    templateKey = "case.fact-find-completed",
-                    channel = "Email",
-                    data = new Dictionary<string, string>
+                PublishedAt = _factFindCompleted.UsesBusOutbox ? DateTime.UtcNow : null,
+                Payload = _factFindCompleted.UsesBusOutbox
+                    ? "{}"
+                    : JsonSerializer.Serialize(new
                     {
-                        ["caseId"] = @case.Id.ToString(),
-                    },
-                    idempotencyKey,
-                    correlationId = @case.Id.ToString(),
-                }),
+                        caseId = message.CaseId,
+                        tenantId = message.TenantId,
+                        brokerId = message.BrokerId,
+                        templateKey = message.TemplateKey,
+                        channel = message.Channel,
+                        data = message.Data,
+                        idempotencyKey,
+                        correlationId = message.CorrelationId,
+                    }),
             });
         }
 
