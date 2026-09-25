@@ -84,7 +84,7 @@ public sealed class SendNotificationHandler
         if (!string.Equals(notification.PayloadFingerprint, fingerprint, StringComparison.Ordinal))
             return new SendNotificationOutcome(SendNotificationKind.IdempotencyConflict, null);
 
-        if (notification.Status is NotificationStatus.Sent or NotificationStatus.Failed)
+        if (notification.Status is NotificationStatus.Sent)
             return ToOutcome(notification);
 
         return await CompleteSend(notification, cancellationToken);

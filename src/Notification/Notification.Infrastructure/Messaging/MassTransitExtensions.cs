@@ -6,6 +6,13 @@ namespace Notification.Infrastructure.Messaging;
 
 public static class MassTransitExtensions
 {
+    public static void AddCaseFactFindCompletedConsumer(this IBusRegistrationConfigurator bus)
+    {
+        bus.AddConsumer<CaseFactFindCompletedConsumer>();
+        bus.AddConfigureEndpointsCallback((_, cfg) =>
+            cfg.UseMessageRetry(NotificationMessageRetry.Configure));
+    }
+
     public static IServiceCollection AddNotificationMassTransit(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -16,7 +23,7 @@ public static class MassTransitExtensions
 
         services.AddMassTransit(bus =>
         {
-            bus.AddConsumer<CaseFactFindCompletedConsumer>();
+            bus.AddCaseFactFindCompletedConsumer();
             if (options.UseRabbitMq)
             {
                 bus.UsingRabbitMq((context, cfg) =>

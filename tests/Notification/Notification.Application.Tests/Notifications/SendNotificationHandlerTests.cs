@@ -66,6 +66,22 @@ public sealed class SendNotificationHandlerTests
     }
 
     [Fact]
+    public async Task Handle_FailedThenRetry_SendsAgain()
+    {
+        var store = new InMemoryStore();
+        store.SeedTemplate();
+        var email = new CountingEmail(succeeds: false);
+        var handler = new SendNotificationHandler(store, store, new PlaceholderTemplateRenderer(), email);
+
+        await handler.Handle(Command());
+        email.Succeeds = true;
+        var second = await handler.Handle(Command());
+
+        Assert.Equal(SendNotificationKind.Sent, second.Kind);
+        Assert.Equal(2, email.Calls);
+    }
+
+    [Fact]
     public async Task Handle_SameKeySamePayload_ReplaysWithoutSecondSend()
     {
         var store = new InMemoryStore();
@@ -142,11 +158,14 @@ sealed class StubEmail(bool succeeds) : IEmailProvider
 sealed class CountingEmail(bool succeeds) : IEmailProvider
 {
     public int Calls { get; private set; }
+    public bool Succeeds { get; set; } = succeeds;
 
     public Task<EmailSendResult> Send(EmailMessage message, CancellationToken cancellationToken = default)
     {
         Calls++;
-        return Task.FromResult(new EmailSendResult(succeeds, "msg-1", null, null));
+        return Task.FromResult(Succeeds
+            ? new EmailSendResult(true, "msg-1", null, null)
+            : new EmailSendResult(false, null, "Decline", "failed"));
     }
 }
 

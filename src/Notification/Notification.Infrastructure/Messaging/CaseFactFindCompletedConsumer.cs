@@ -30,9 +30,9 @@ public sealed class CaseFactFindCompletedConsumer : IConsumer<CaseFactFindComple
             context.CancellationToken);
 
         if (outcome.Kind is SendNotificationKind.TemplateNotFound)
-            throw new InvalidOperationException($"Unknown template {message.TemplateKey}");
+            throw new NotificationTemplateNotFoundException(message.TemplateKey);
 
         if (outcome.Kind is SendNotificationKind.Failed)
-            throw new InvalidOperationException("Email send failed");
+            throw new EmailDeliveryFailedException();
     }
 }
